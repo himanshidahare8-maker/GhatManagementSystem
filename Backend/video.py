@@ -1,6 +1,6 @@
 import cv2
 
-video_path = "../Videos/ghat_video.mp4"
+video_path = "../Videos\crowd.mp4"
 
 cap = cv2.VideoCapture(video_path)
 
