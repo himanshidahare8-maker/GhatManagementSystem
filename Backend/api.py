@@ -1,6 +1,8 @@
 from flask import Flask, jsonify
 from flask_cors import CORS
 import cv2
+import time
+from collections import deque
 from ultralytics import YOLO
 
 from decision_engine import (
@@ -12,12 +14,17 @@ from decision_engine import (
 app = Flask(__name__)
 CORS(app)
 
-
 # =========================================================
 # YOLO MODEL
 # =========================================================
 
 model = YOLO("yolo11n.pt")
+
+# Only YOLO class 0 = person
+PERSON_CLASS = 0
+
+# Ignore very low-confidence detections
+CONFIDENCE_THRESHOLD = 0.50
 
 
 # =========================================================
@@ -28,15 +35,14 @@ VIDEO_PATH = "../Videos/crowd.mp4"
 
 video = cv2.VideoCapture(VIDEO_PATH)
 
-# Current video frame
 current_frame = 0
 
-# Number of frames to move on every API request
+# Analyze every 15 frames
 FRAME_STEP = 15
 
 
 # =========================================================
-# ZONE CAPACITIES
+# GHAT ZONE CAPACITY
 # =========================================================
 
 ZONES = {
@@ -46,6 +52,44 @@ ZONES = {
 }
 
 TOTAL_CAPACITY = sum(ZONES.values())
+
+
+# =========================================================
+# CROWD HISTORY
+# =========================================================
+# We will keep recent crowd observations.
+#
+# Example:
+#
+# {
+#   "video_time": 1.2,
+#   "Zone A": 3,
+#   "Zone B": 8,
+#   "Zone C": 2
+# }
+#
+# This data will later be used for prediction.
+
+crowd_history = deque(maxlen=60)
+
+history_start_time = time.time()
+
+
+# =========================================================
+# HOME
+# =========================================================
+
+@app.route("/")
+def home():
+
+    return jsonify({
+        "project": "GhatNetra AI",
+        "status": "Backend running",
+        "model": "YOLO11n",
+        "detection_class": "person",
+        "confidence_threshold": CONFIDENCE_THRESHOLD,
+        "prediction_history_points": len(crowd_history)
+    })
 
 
 # =========================================================
@@ -59,84 +103,87 @@ def get_status():
     global current_frame
 
     # -----------------------------------------------------
-    # Check whether video is available
+    # Check video
     # -----------------------------------------------------
 
     if not video.isOpened():
 
         video = cv2.VideoCapture(VIDEO_PATH)
-        current_frame = 0
+
+        if not video.isOpened():
+
+            return jsonify({
+                "success": False,
+                "error": "Could not open crowd video."
+            }), 500
+
 
     # -----------------------------------------------------
-    # Move forward in the video
+    # Move video forward
     # -----------------------------------------------------
-
-    ret = False
-    frame = None
 
     for _ in range(FRAME_STEP):
 
         ret, frame = video.read()
 
         if not ret:
+
+            # Restart video when it reaches the end
+            video.release()
+            video = cv2.VideoCapture(VIDEO_PATH)
+
+            current_frame = 0
+
+            ret, frame = video.read()
+
+            if not ret:
+
+                return jsonify({
+                    "success": False,
+                    "error": "Could not read video frame."
+                }), 500
+
             break
 
-    # -----------------------------------------------------
-    # If video reached the end, restart
-    # -----------------------------------------------------
+        current_frame += 1
 
-    if not ret:
-
-        video.release()
-
-        video = cv2.VideoCapture(VIDEO_PATH)
-
-        current_frame = 0
-
-        # Read first frame after restart
-        ret, frame = video.read()
 
     # -----------------------------------------------------
-    # Check frame
+    # YOLO PERSON DETECTION
     # -----------------------------------------------------
-
-    if not ret:
-
-        return jsonify({
-            "success": False,
-            "error": "Could not read video frame"
-        }), 500
-
-    # Update frame number
-    current_frame += FRAME_STEP
-
-
-    # =====================================================
-    # YOLO DETECTION
-    # =====================================================
 
     results = model(
         frame,
+        classes=[PERSON_CLASS],
+        conf=CONFIDENCE_THRESHOLD,
         verbose=False
     )
+
 
     total_people = 0
 
     for box in results[0].boxes:
 
-        # Class 0 = person
-        if int(box.cls[0]) == 0:
+        class_id = int(box.cls[0])
+        confidence = float(box.conf[0])
 
+        if (
+            class_id == PERSON_CLASS
+            and confidence >= CONFIDENCE_THRESHOLD
+        ):
             total_people += 1
 
 
-    # =====================================================
+    # -----------------------------------------------------
     # TEMPORARY ZONE DISTRIBUTION
-    # =====================================================
-
-    # NOTE:
-    # This is currently a temporary distribution.
-    # Exact polygon-based zone detection can be added later.
+    # -----------------------------------------------------
+    #
+    # IMPORTANT:
+    # This is still temporary.
+    #
+    # Next step we will replace this with the actual
+    # polygon-based Zone A/B/C detection.
+    #
 
     zone_a = round(total_people * 0.20)
 
@@ -145,138 +192,183 @@ def get_status():
     zone_c = total_people - zone_a - zone_b
 
 
-    zone_counts = {
+    # -----------------------------------------------------
+    # CURRENT VIDEO TIME
+    # -----------------------------------------------------
 
+    fps = video.get(cv2.CAP_PROP_FPS)
+
+    if fps <= 0:
+        fps = 30
+
+    video_time = current_frame / fps
+
+
+    # -----------------------------------------------------
+    # SAVE CROWD HISTORY
+    # -----------------------------------------------------
+
+    observation = {
+        "video_time": round(video_time, 2),
+        "frame": current_frame,
         "Zone A": zone_a,
-
         "Zone B": zone_b,
+        "Zone C": zone_c,
+        "total": total_people
+    }
 
+    crowd_history.append(observation)
+
+
+    # -----------------------------------------------------
+    # OCCUPANCY
+    # -----------------------------------------------------
+
+    overall_occupancy = (
+        total_people / TOTAL_CAPACITY
+    ) * 100
+
+
+    # -----------------------------------------------------
+    # ZONE STATUS
+    # -----------------------------------------------------
+
+    zone_counts = {
+        "Zone A": zone_a,
+        "Zone B": zone_b,
         "Zone C": zone_c
     }
 
-
-    # =====================================================
-    # OVERALL OCCUPANCY
-    # =====================================================
-
-    occupancy, status, _ = evaluate_zone_status(
-
-        total_people,
-
-        TOTAL_CAPACITY
-    )
-
-
-    # =====================================================
-    # ZONE STATUS
-    # =====================================================
-
     zone_status = {}
 
+    for zone_name, capacity in ZONES.items():
 
-    for zone, count in zone_counts.items():
+        count = zone_counts[zone_name]
 
-        occ, stat, _ = evaluate_zone_status(
+        occupancy = (count / capacity) * 100
 
+        status = evaluate_zone_status(
             count,
-
-            ZONES[zone]
+            capacity
         )
 
-
-        zone_status[zone] = {
-
+        zone_status[zone_name] = {
             "count": count,
-
-            "capacity": ZONES[zone],
-
-            "occupancy": occ,
-
-            "status": stat
+            "capacity": capacity,
+            "occupancy": round(occupancy, 1),
+            "status": status[0] if isinstance(status, tuple) else status
         }
 
 
-    # =====================================================
+    # -----------------------------------------------------
     # GATE DECISION
-    # =====================================================
+    # -----------------------------------------------------
 
     decisions = get_gate_recommendations(
-
-        occupancy,
-
-        {
-            zone: data["status"]
-
-            for zone, data in zone_status.items()
-        }
+        overall_occupancy,
+        zone_status
     )
 
 
-    # =====================================================
+    # -----------------------------------------------------
     # EVACUATION TIME
-    # =====================================================
+    # -----------------------------------------------------
 
     evacuation_time = calculate_evacuation_time(
-
         total_people,
-
         exit_width_meters=4.0
     )
 
 
-    # =====================================================
-    # API RESPONSE
-    # =====================================================
+    # -----------------------------------------------------
+    # RETURN RESPONSE
+    # -----------------------------------------------------
 
     return jsonify({
 
         "success": True,
 
-        # Video information
         "frame_number": current_frame,
 
-        # Crowd
+        "video_time": round(video_time, 2),
+
         "total_people": total_people,
 
         "total_capacity": TOTAL_CAPACITY,
 
-        "occupancy": occupancy,
+        "occupancy": round(
+            overall_occupancy,
+            1
+        ),
 
-        "overall_status": status,
+        "zones": zone_status,
 
-        # Gates
-        "gate_1": decisions["gate_1"],
+        "gate_1": decisions.get(
+            "gate_1",
+            "OPEN"
+        ),
 
-        "gate_2": decisions["gate_2"],
+        "gate_2": decisions.get(
+            "gate_2",
+            "OPEN"
+        ),
 
-        # Safety
-        "evacuation_time": evacuation_time,
+        "alternate_route": decisions.get(
+            "alternate_route",
+            "No diversion needed. All pathways clear."
+        ),
 
-        "alternate_route": decisions["alternate_route"],
+        "resource_action": decisions.get(
+            "resource_action",
+            "Routine patrolling by local volunteers."
+        ),
 
-        "resource_action": decisions["resource_action"],
+        "evacuation_time": round(
+            evacuation_time,
+            1
+        ),
 
-        # Zones
-        "zones": zone_status
+        # ---------------------------------------------
+        # HISTORY INFORMATION
+        # ---------------------------------------------
+
+        "history": {
+            "points": len(crowd_history),
+            "recent": list(crowd_history)[-10:]
+        },
+
+        # ---------------------------------------------
+        # DETECTION INFORMATION
+        # ---------------------------------------------
+
+        "detection": {
+
+            "model": "YOLO11n",
+
+            "class": "person",
+
+            "confidence_threshold":
+                CONFIDENCE_THRESHOLD
+        }
+
     })
 
 
 # =========================================================
-# HOME API
+# CROWD HISTORY API
 # =========================================================
 
-@app.route("/")
-def home():
+@app.route("/api/history")
+def get_history():
 
     return jsonify({
 
-        "message": "GhatNetra AI Backend API is running",
+        "success": True,
 
-        "status": "online",
+        "points": len(crowd_history),
 
-        "video": "crowd.mp4",
+        "history": list(crowd_history)
 
-        "frame_step": FRAME_STEP
     })
 
 
@@ -287,10 +379,7 @@ def home():
 if __name__ == "__main__":
 
     app.run(
-
         host="127.0.0.1",
-
         port=5000,
-
         debug=True
     )
