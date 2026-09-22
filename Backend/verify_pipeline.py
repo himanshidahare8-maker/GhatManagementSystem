@@ -7,11 +7,11 @@ print("[1] Loading YOLO model...")
 model = YOLO("yolo11n.pt")
 
 print("[2] Opening video...")
-video = cv2.VideoCapture("videos/crowd.mp4")
+video = cv2.VideoCapture("../Videos/crowd.mp4")
 ret, frame = video.read()
 
 if not ret:
-    print("[ERROR] Could not read frame from videos/crowd.mp4")
+    print("[ERROR] Could not read frame from ../Videos/crowd.mp4")
     exit(1)
 
 print(f"[3] Frame read successfully. Dimensions: {frame.shape[1]}x{frame.shape[0]}")
