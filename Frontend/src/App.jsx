@@ -1,12 +1,89 @@
+import { useEffect, useState } from 'react'
 import './App.css'
 
 function App() {
+  const [data, setData] = useState(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
+
+  const fetchData = () => {
+    setLoading(true)
+    setError(null)
+
+    fetch('http://127.0.0.1:5000/api/status')
+      .then(response => {
+        if (!response.ok) {
+          throw new Error('Backend API error')
+        }
+        return response.json()
+      })
+      .then(result => {
+        setData(result)
+        setLoading(false)
+      })
+      .catch(error => {
+        console.error('API Error:', error)
+        setError('Backend se data nahi mil raha.')
+        setLoading(false)
+      })
+  }
+
+  useEffect(() => {
+    fetchData()
+  }, [])
+
+  // Loading screen
+  if (loading) {
+    return (
+      <div className="loading">
+        <div>
+          <h1>GhatNetra AI</h1>
+          <p>Connecting to AI Crowd Detection...</p>
+        </div>
+      </div>
+    )
+  }
+
+  // Error screen
+  if (error || !data) {
+    return (
+      <div className="loading">
+        <div>
+          <h1>GhatNetra AI</h1>
+          <p>{error || 'No data available'}</p>
+
+          <button
+            onClick={fetchData}
+            style={{
+              marginTop: '15px',
+              padding: '10px 18px',
+              borderRadius: '8px',
+              border: 'none',
+              cursor: 'pointer'
+            }}
+          >
+            Retry
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  // API data
+  const zoneA = data.zones?.['Zone A']
+  const zoneB = data.zones?.['Zone B']
+  const zoneC = data.zones?.['Zone C']
+
   return (
     <div className="app">
-      {/* Sidebar */}
+
+      {/* ================= SIDEBAR ================= */}
+
       <aside className="sidebar">
+
         <div className="logo-box">
           <div className="logo-icon">G</div>
+
           <div>
             <h2>GhatNetra</h2>
             <span>AI SAFETY SYSTEM</span>
@@ -14,158 +91,462 @@ function App() {
         </div>
 
         <nav>
-          <button className="nav-item active">📊 Dashboard</button>
-          <button className="nav-item">🎥 Live Monitoring</button>
-          <button className="nav-item">📈 Analytics</button>
-          <button className="nav-item">🚨 Alerts</button>
-          <button className="nav-item">⚙️ Settings</button>
+          <button className="nav-item active">
+            📊 Dashboard
+          </button>
+
+          <button className="nav-item">
+            🎥 Live Monitoring
+          </button>
+
+          <button className="nav-item">
+            📈 Analytics
+          </button>
+
+          <button className="nav-item">
+            🚨 Alerts
+          </button>
+
+          <button className="nav-item">
+            ⚙️ Settings
+          </button>
         </nav>
 
         <div className="system-status">
+
           <div className="status-dot"></div>
+
           <div>
             <strong>System Online</strong>
             <small>AI Engine Active</small>
           </div>
+
         </div>
+
       </aside>
 
-      {/* Main Content */}
+
+      {/* ================= MAIN ================= */}
+
       <main className="main">
+
+        {/* TOP BAR */}
+
         <header className="topbar">
+
           <div>
             <h1>Ghat Management Dashboard</h1>
-            <p>AI-powered crowd monitoring & safety decision support</p>
+
+            <p>
+              AI-powered crowd monitoring & safety decision support
+            </p>
           </div>
 
           <div className="location">
+
             📍 River Ghat
+
             <span>● LIVE</span>
+
           </div>
+
         </header>
 
-        {/* Stats */}
+
+        {/* ================= STATS ================= */}
+
         <section className="stats-grid">
+
+          {/* Total Crowd */}
+
           <div className="stat-card">
+
             <span>Total Crowd</span>
-            <strong>17</strong>
-            <small>People detected</small>
+
+            <strong>
+              {data.total_people}
+            </strong>
+
+            <small>
+              People detected by YOLO
+            </small>
+
           </div>
 
+
+          {/* Occupancy */}
+
           <div className="stat-card">
+
             <span>Occupancy</span>
-            <strong>3.8%</strong>
-            <small className="safe">LOW</small>
+
+            <strong>
+              {data.occupancy}%
+            </strong>
+
+            <small className="safe">
+              {data.overall_status}
+            </small>
+
           </div>
 
+
+          {/* Entry Gate */}
+
           <div className="stat-card">
+
             <span>Entry Gate</span>
-            <strong className="open">OPEN</strong>
-            <small>Normal entry</small>
+
+            <strong className="open">
+              {data.gate_1?.split(' (')[0]}
+            </strong>
+
+            <small>
+              {data.gate_1}
+            </small>
+
           </div>
 
+
+          {/* Exit Gate */}
+
           <div className="stat-card">
+
             <span>Exit Gate</span>
-            <strong className="open">OPEN</strong>
-            <small>Normal exit</small>
+
+            <strong className="open">
+              {data.gate_2?.split(' (')[0]}
+            </strong>
+
+            <small>
+              {data.gate_2}
+            </small>
+
           </div>
+
         </section>
 
-        {/* Monitoring */}
+
+        {/* ================= MONITORING ================= */}
+
         <section className="content-grid">
+
+
+          {/* VIDEO PANEL */}
+
           <div className="panel video-panel">
+
             <div className="panel-header">
-              <h2>🎥 Crowd Monitoring</h2>
-              <span className="live-badge">LIVE ANALYSIS</span>
+
+              <h2>
+                🎥 Crowd Monitoring
+              </h2>
+
+              <span className="live-badge">
+                YOLO ANALYSIS
+              </span>
+
             </div>
+
 
             <div className="video-placeholder">
-              <div className="camera-icon">🎥</div>
-              <h3>AI Crowd Detection</h3>
-              <p>YOLO detection stream will appear here</p>
 
-              <div className="detection-box box-a">Zone A</div>
-              <div className="detection-box box-b">Zone B</div>
-              <div className="detection-box box-c">Zone C</div>
+              <div className="camera-icon">
+                🎥
+              </div>
+
+              <h3>
+                AI Crowd Detection
+              </h3>
+
+              <p>
+                YOLO detected {data.total_people} people
+              </p>
+
+
+              <div className="detection-box box-a">
+                Zone A
+              </div>
+
+              <div className="detection-box box-b">
+                Zone B
+              </div>
+
+              <div className="detection-box box-c">
+                Zone C
+              </div>
+
             </div>
+
           </div>
 
+
+          {/* ZONE STATUS */}
+
           <div className="panel">
+
             <div className="panel-header">
-              <h2>Zone Status</h2>
+
+              <h2>
+                Zone Status
+              </h2>
+
             </div>
 
-            <div className="zone">
-              <div>
-                <strong>Zone A — Upper Entry</strong>
-                <small>3 / 150 people</small>
-              </div>
-              <span className="low">LOW</span>
-            </div>
+
+            {/* Zone A */}
 
             <div className="zone">
+
               <div>
-                <strong>Zone B — Central Snan</strong>
-                <small>10 / 200 people</small>
+
+                <strong>
+                  Zone A — Upper Entry
+                </strong>
+
+                <small>
+                  {zoneA?.count} / {zoneA?.capacity} people
+                  {' '}({zoneA?.occupancy}%)
+                </small>
+
               </div>
-              <span className="low">LOW</span>
+
+              <span className="low">
+                {zoneA?.status}
+              </span>
+
             </div>
 
+
+            {/* Zone B */}
+
             <div className="zone">
+
               <div>
-                <strong>Zone C — Waterfront</strong>
-                <small>4 / 100 people</small>
+
+                <strong>
+                  Zone B — Central Snan
+                </strong>
+
+                <small>
+                  {zoneB?.count} / {zoneB?.capacity} people
+                  {' '}({zoneB?.occupancy}%)
+                </small>
+
               </div>
-              <span className="low">LOW</span>
+
+              <span className="low">
+                {zoneB?.status}
+              </span>
+
             </div>
+
+
+            {/* Zone C */}
+
+            <div className="zone">
+
+              <div>
+
+                <strong>
+                  Zone C — Waterfront
+                </strong>
+
+                <small>
+                  {zoneC?.count} / {zoneC?.capacity} people
+                  {' '}({zoneC?.occupancy}%)
+                </small>
+
+              </div>
+
+              <span className="low">
+                {zoneC?.status}
+              </span>
+
+            </div>
+
+
+            {/* Recommendation */}
 
             <div className="recommendation">
-              <strong>✓ Current Recommendation</strong>
-              <p>No diversion needed. Crowd level is within safe limits.</p>
+
+              <strong>
+                ✓ Current Recommendation
+              </strong>
+
+              <p>
+                {data.alternate_route}
+              </p>
+
             </div>
+
           </div>
+
         </section>
 
-        {/* Bottom panels */}
+
+        {/* ================= BOTTOM PANELS ================= */}
+
         <section className="bottom-grid">
+
+
+          {/* GATE CONTROL */}
+
           <div className="panel">
+
             <div className="panel-header">
-              <h2>🚪 Gate Control</h2>
+
+              <h2>
+                🚪 Gate Control
+              </h2>
+
             </div>
 
-            <div className="gate-row">
-              <span>Gate 1 — Entry</span>
-              <button className="gate-open">OPEN</button>
-            </div>
 
             <div className="gate-row">
-              <span>Gate 2 — Exit</span>
-              <button className="gate-open">OPEN</button>
+
+              <span>
+                Gate 1 — Entry
+              </span>
+
+              <button className="gate-open">
+                {data.gate_1?.split(' (')[0]}
+              </button>
+
             </div>
+
+
+            <div className="gate-row">
+
+              <span>
+                Gate 2 — Exit
+              </span>
+
+              <button className="gate-open">
+                {data.gate_2?.split(' (')[0]}
+              </button>
+
+            </div>
+
           </div>
 
+
+          {/* ALERTS */}
+
           <div className="panel">
+
             <div className="panel-header">
-              <h2>⚠️ Alerts</h2>
+
+              <h2>
+                ⚠️ Alerts
+              </h2>
+
             </div>
+
 
             <div className="no-alert">
-              ✓ No active safety alerts
-            </div>
-          </div>
 
-          <div className="panel">
-            <div className="panel-header">
-              <h2>🔮 Prediction</h2>
+              ✓ No active safety alerts
+
             </div>
+
 
             <p className="prediction">
-              Crowd level is currently <strong>LOW</strong>.
+
+              Current status:
+              {' '}
+              <strong>
+                {data.overall_status}
+              </strong>
+
             </p>
-            <small>Prediction module will use historical data.</small>
+
           </div>
+
+
+          {/* DECISION SUPPORT */}
+
+          <div className="panel">
+
+            <div className="panel-header">
+
+              <h2>
+                🧠 Decision Support
+              </h2>
+
+            </div>
+
+
+            <p className="prediction">
+
+              <strong>
+                Evacuation Time:
+              </strong>
+
+              {' '}
+
+              {data.evacuation_time} min
+
+            </p>
+
+
+            <p className="prediction">
+
+              <strong>
+                Security:
+              </strong>
+
+              {' '}
+
+              {data.resource_action}
+
+            </p>
+
+
+            <small>
+              AI decision generated from current crowd analysis.
+            </small>
+
+          </div>
+
         </section>
+
+
+        {/* ================= FOOTER ACTIONS ================= */}
+
+        <div
+          style={{
+            marginTop: '20px',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center'
+          }}
+        >
+
+          <small style={{ color: '#78939a' }}>
+            GhatNetra AI • YOLO + Python Backend
+          </small>
+
+
+          <button
+            onClick={fetchData}
+            style={{
+              background: '#19c6bd',
+              color: '#062027',
+              border: 'none',
+              padding: '10px 18px',
+              borderRadius: '8px',
+              fontWeight: 'bold',
+              cursor: 'pointer'
+            }}
+          >
+            🔄 Refresh Analysis
+          </button>
+
+        </div>
+
       </main>
+
     </div>
   )
 }
