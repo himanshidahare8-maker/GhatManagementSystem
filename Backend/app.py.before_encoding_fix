@@ -280,7 +280,7 @@ with tab1:
     with c_left:
 
         st.subheader(
-            "🎥 Live CCTV & YOLOv11 Detections"
+            "ðŸŽ¥ Live CCTV & YOLOv11 Detections"
         )
 
         st.caption(
@@ -321,7 +321,7 @@ with tab1:
 
     if start_btn:
 
-        st.success("✅ Start Button Clicked!")
+        st.success("âœ… Start Button Clicked!")
 
         # -------------------------------------------------
         # CHECK MODEL
@@ -353,9 +353,9 @@ with tab1:
 
             st.info(
                 "Inme se kisi location par `ghat_crowd.mp4` rakho:\n\n"
-                "• Videos/ghat_crowd.mp4\n"
-                "• videos/ghat_crowd.mp4\n"
-                "• project root/ghat_crowd.mp4"
+                "â€¢ Videos/ghat_crowd.mp4\n"
+                "â€¢ videos/ghat_crowd.mp4\n"
+                "â€¢ project root/ghat_crowd.mp4"
             )
 
             st.stop()
@@ -365,7 +365,7 @@ with tab1:
         # LOAD MODEL
         # -------------------------------------------------
 
-        with st.spinner("🤖 Loading YOLOv11 model..."):
+        with st.spinner("ðŸ¤– Loading YOLOv11 model..."):
 
             model = load_model()
 
@@ -380,7 +380,7 @@ with tab1:
 
 
         st.success(
-            f"✅ Model loaded: {MODEL_PATH.name}"
+            f"âœ… Model loaded: {MODEL_PATH.name}"
         )
 
 
@@ -421,7 +421,7 @@ with tab1:
 
 
         st.info(
-            f"🎥 Video: `{VIDEO_PATH.name}` | "
+            f"ðŸŽ¥ Video: `{VIDEO_PATH.name}` | "
             f"FPS: {fps:.1f} | "
             f"Frames: {total_frames}"
         )
@@ -1034,20 +1034,20 @@ with tab1:
                 with mc1:
 
                     st.metric(
-                        "👥 Total Crowd",
+                        "ðŸ‘¥ Total Crowd",
                         total_people
                     )
 
                 with mc2:
 
                     st.metric(
-                        "📊 Occupancy",
+                        "ðŸ“Š Occupancy",
                         f"{overall_occ:.1f}%"
                     )
 
 
                 st.metric(
-                    "🚨 Overall Status",
+                    "ðŸš¨ Overall Status",
                     overall_stat
                 )
 
@@ -1058,7 +1058,7 @@ with tab1:
 
             with gate_placeholder.container():
 
-                st.markdown("### 🚧 Zone Status")
+                st.markdown("### ðŸš§ Zone Status")
 
                 zone_df = pd.DataFrame(
                     {
@@ -1100,7 +1100,7 @@ with tab1:
                 with route_placeholder.container():
 
                     st.markdown(
-                        "### 🚦 Gate Recommendation"
+                        "### ðŸš¦ Gate Recommendation"
                     )
 
                     st.write(
@@ -1114,21 +1114,21 @@ with tab1:
                     if overall_occ >= 90:
 
                         st.error(
-                            "🔴 CRITICAL: "
+                            "ðŸ”´ CRITICAL: "
                             "Control entry and increase exit flow."
                         )
 
                     elif overall_occ >= 70:
 
                         st.warning(
-                            "🟠 HIGH DENSITY: "
+                            "ðŸŸ  HIGH DENSITY: "
                             "Reduce incoming crowd."
                         )
 
                     else:
 
                         st.success(
-                            "🟢 NORMAL: "
+                            "ðŸŸ¢ NORMAL: "
                             "Crowd flow is within limits."
                         )
 
@@ -1148,7 +1148,7 @@ with tab1:
 
 
         st.success(
-            "✅ Crowd processing completed for demo frames."
+            "âœ… Crowd processing completed for demo frames."
         )
 
         st.info(
@@ -1313,13 +1313,13 @@ with tab2:
     def density_status(percent):
 
         if percent < 30:
-            return "LOW", "🟢"
+            return "LOW", "ðŸŸ¢"
 
         elif percent < 70:
-            return "MEDIUM", "🟡"
+            return "MEDIUM", "ðŸŸ¡"
 
         else:
-            return "HIGH", "🔴"
+            return "HIGH", "ðŸ”´"
 
     status_a, icon_a = density_status(zone_a_percent)
     status_b, icon_b = density_status(zone_b_percent)
@@ -1329,7 +1329,7 @@ with tab2:
     # VISIBLE HEATMAP
     # ---------------------------------------------------------
 
-    st.markdown("### 🔥 AI Crowd Density Heatmap")
+    st.markdown("### ðŸ”¥ AI Crowd Density Heatmap")
     heatmap_html = f"""<div style="width:100%;height:360px;display:flex;border-radius:16px;overflow:hidden;border:3px solid #ffffff;box-shadow:0 8px 25px rgba(0,0,0,0.5);margin:15px 0;">
 
 <div style="width:33.33%;background:linear-gradient(135deg,#16a34a,#22c55e);display:flex;flex-direction:column;justify-content:center;align-items:center;color:#ffffff;border-right:3px solid #ffffff;text-align:center;">
@@ -1403,14 +1403,14 @@ with tab2:
 
     with flow_col1:
         st.metric(
-            "Zone A → Zone B",
+            "Zone A â†’ Zone B",
             "â†—ï¸ INCOMING",
             "Crowd moving toward central area"
         )
 
     with flow_col2:
         st.metric(
-            "Zone B → Zone C",
+            "Zone B â†’ Zone C",
             "âž¡ï¸ OUTGOING",
             "Crowd moving toward exit"
         )
@@ -1426,7 +1426,7 @@ with tab2:
     # DENSITY SUMMARY
     # ---------------------------------------------------------
 
-    st.markdown("### 📊 Zone Density Summary")
+    st.markdown("### ðŸ“Š Zone Density Summary")
 
     density_data = pd.DataFrame({
         "Zone": [
@@ -1470,16 +1470,16 @@ with tab2:
     # LEGEND
     # ---------------------------------------------------------
 
-    st.markdown("### 🎨 Heatmap Legend")
+    st.markdown("### ðŸŽ¨ Heatmap Legend")
 
     l1, l2, l3 = st.columns(3)
 
     with l1:
-        st.success("🟢 LOW — Safe crowd density")
+        st.success("ðŸŸ¢ LOW â€” Safe crowd density")
 
     with l2:
-        st.warning("🟡 MEDIUM — Monitor crowd movement")
+        st.warning("ðŸŸ¡ MEDIUM â€” Monitor crowd movement")
 
     with l3:
-        st.error("🔴 HIGH — Crowd control required")
+        st.error("ðŸ”´ HIGH â€” Crowd control required")
 

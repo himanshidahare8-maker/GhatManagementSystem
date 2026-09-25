@@ -1,5 +1,5 @@
-﻿"""
-GhatNetra AI (à¤˜à¤¾à¤Ÿ-à¤¨à¥‡à¤¤à¥à¤°)
+"""
+GhatNetra AI (घाट-नेत्र)
 MPSTDC AI Ghat Crowd Management & Decision Support System
 Smart India Hackathon 2026
 """
@@ -26,7 +26,7 @@ from decision_engine import (
 
 st.set_page_config(
     page_title="GhatNetra AI - MPSTDC SIH 2026",
-    page_icon="ðŸ•‰ï¸",
+    page_icon="🕉️",
     layout="wide",
     initial_sidebar_state="expanded"
 )
@@ -114,11 +114,11 @@ st.sidebar.image(
     width=80
 )
 
-st.sidebar.title("ðŸŽ›ï¸ Command Controls")
+st.sidebar.title("🎛️ Command Controls")
 
 
 selected_ghat = st.sidebar.selectbox(
-    "ðŸ“ Select Ghat Location",
+    "📍 Select Ghat Location",
     [
         "Ujjain - Ram Ghat (Shipra River)",
         "Ujjain - Narsingh Ghat (Shipra River)",
@@ -129,7 +129,7 @@ selected_ghat = st.sidebar.selectbox(
 )
 
 
-st.sidebar.subheader("ðŸ“ Zone Capacity Limits")
+st.sidebar.subheader("📐 Zone Capacity Limits")
 
 cap_zone_a = st.sidebar.slider(
     "Zone A (Entry Steps)",
@@ -164,7 +164,7 @@ TOTAL_CAPACITY = (
 # TOP BANNER
 # =========================================================
 
-st.title("\U0001F549\U0000FE0F GhatNetra AI (\u0918\u093E\u091F-\u0928\u0947\u0924\u094D\u0930)")
+st.title("🕉️ GhatNetra AI (घाट-नेत्र)")
 
 st.subheader(
     "Madhya Pradesh State Tourism Development Corporation Limited (MPSTDC)"
@@ -178,11 +178,11 @@ st.write(
 c1, c2 = st.columns(2)
 
 with c1:
-    st.write("ðŸ“ **Ujjain Ram Ghat (Shipra River)**")
+    st.write("📍 **Ujjain Ram Ghat (Shipra River)**")
 
 with c2:
     st.write(
-        "ðŸŒ¤ï¸ 31Â°C  |  River Flow: 1.2 m/s  |  Aarti: 18:30 IST"
+        "🌤️ 31°C  |  River Flow: 1.2 m/s  |  Aarti: 18:30 IST"
     )
 
 st.divider()
@@ -253,12 +253,12 @@ def load_model():
 
 tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs(
     [
-        "\U0001F4F9 Live Surveillance & Gates",
-        "\U0001F321\U0000FE0F Density Heatmap & Flow",
-        "\U0001F4C8 Trend & 60-Min Prediction",
-        "\U0001F5FA\U0000FE0F Ghat GIS Map & Diversions",
-        "\U0001F50D AI Lost Person Search",
-        "\U0001F9EA What-If Simulation Sandbox"
+        "📹 Live Surveillance & Gates",
+        "🌡️ Density Heatmap & Flow",
+        "📈 Trend & 60-Min Prediction",
+        "🗺️ Ghat GIS Map & Diversions",
+        "🔍 AI Lost Person Search",
+        "🧪 'What-If' Simulation Sandbox"
     ]
 )
 
@@ -292,7 +292,7 @@ with tab1:
 
 
         start_btn = st.button(
-            "â–¶ï¸ Start Live Crowd Processing",
+            "▶️ Start Live Crowd Processing",
             type="primary",
             key="start_live"
         )
@@ -305,7 +305,7 @@ with tab1:
     with c_right:
 
         st.subheader(
-            "ðŸ›¡ï¸ AI Gate & Decision Status"
+            "🛡️ AI Gate & Decision Status"
         )
 
         m_placeholder = st.empty()
@@ -330,7 +330,7 @@ with tab1:
         if not MODEL_PATH.exists():
 
             st.error(
-                f"âŒ YOLO model not found:\n\n"
+                f"❌ YOLO model not found:\n\n"
                 f"{MODEL_PATH}"
             )
 
@@ -348,7 +348,7 @@ with tab1:
         if VIDEO_PATH is None:
 
             st.error(
-                "âŒ Video file nahi mili."
+                "❌ Video file nahi mili."
             )
 
             st.info(
@@ -373,7 +373,7 @@ with tab1:
         if model is None:
 
             st.error(
-                "âŒ YOLO model load nahi hua."
+                "❌ YOLO model load nahi hua."
             )
 
             st.stop()
@@ -396,7 +396,7 @@ with tab1:
         if not video.isOpened():
 
             st.error(
-                f"âŒ Video open nahi ho rahi:\n{VIDEO_PATH}"
+                f"❌ Video open nahi ho rahi:\n{VIDEO_PATH}"
             )
 
             st.stop()
@@ -1161,118 +1161,9 @@ with tab1:
 # DENSITY HEATMAP & CROWD FLOW
 # =========================================================
 
-
-# =========================================================
-# TAB 3
-# TREND & 60-MIN PREDICTION
-# =========================================================
-
-with tab3:
-
-    st.subheader("\U0001F4C8 Trend & 60-Min Prediction")
-
-    st.caption(
-        "AI-based crowd trend analysis and 60-minute crowd prediction."
-    )
-
-    current_crowd = 53
-    predicted_crowd = 68
-
-    c1, c2, c3 = st.columns(3)
-
-    with c1:
-        st.metric(
-            "👥 Current Crowd",
-            f"{current_crowd} People"
-        )
-
-    with c2:
-        st.metric(
-            "🔮 60-Min Prediction",
-            f"{predicted_crowd} People",
-            "+15"
-        )
-
-    with c3:
-        st.metric(
-            "📈 Crowd Trend",
-            "Increasing",
-            "+28.3%"
-        )
-
-    st.divider()
-
-    st.markdown("### 📊 Crowd Trend")
-
-    trend_data = pd.DataFrame({
-        "Time": [
-            "11:00",
-            "11:10",
-            "11:20",
-            "11:30",
-            "11:40",
-            "11:50",
-            "12:00"
-        ],
-        "Crowd": [
-            31,
-            35,
-            39,
-            42,
-            46,
-            49,
-            53
-        ]
-    })
-
-    st.line_chart(
-        trend_data.set_index("Time"),
-        width="stretch",
-        height=400
-    )
-
-    st.markdown("### 🔮 Next 60-Minute Crowd Prediction")
-
-    prediction_data = pd.DataFrame({
-        "Time": [
-            "12:10",
-            "12:20",
-            "12:30",
-            "12:40",
-            "12:50",
-            "13:00"
-        ],
-        "Predicted Crowd": [
-            55,
-            57,
-            59,
-            62,
-            65,
-            68
-        ]
-    })
-
-    st.dataframe(
-        prediction_data,
-        width="stretch",
-        hide_index=True
-    )
-
-    st.success(
-        "🟢 NORMAL: Predicted crowd remains within the current capacity range."
-    )
-
-    st.markdown("### 🤖 AI Crowd Insight")
-
-    st.info(
-        "The current crowd trend shows a gradual increase. "
-        "The system predicts approximately 68 people over the next "
-        "60 minutes based on the demonstrated trend."
-    )
-
 with tab2:
 
-    st.subheader("ðŸŒ¡ï¸ Density Heatmap & Crowd Flow")
+    st.subheader("🌡️ Density Heatmap & Crowd Flow")
 
     st.caption(
         "AI-based crowd density monitoring for the selected ghat."
@@ -1397,28 +1288,28 @@ with tab2:
     # FLOW DIRECTION
     # ---------------------------------------------------------
 
-    st.markdown("### âž¡ï¸ Crowd Flow Direction")
+    st.markdown("### ➡️ Crowd Flow Direction")
 
     flow_col1, flow_col2, flow_col3 = st.columns(3)
 
     with flow_col1:
         st.metric(
             "Zone A → Zone B",
-            "â†—ï¸ INCOMING",
+            "↗️ INCOMING",
             "Crowd moving toward central area"
         )
 
     with flow_col2:
         st.metric(
             "Zone B → Zone C",
-            "âž¡ï¸ OUTGOING",
+            "➡️ OUTGOING",
             "Crowd moving toward exit"
         )
 
     with flow_col3:
         st.metric(
             "Overall Flow",
-            "âž¡ï¸ NORMAL",
+            "➡️ NORMAL",
             "No critical congestion"
         )
 
@@ -1482,4 +1373,3 @@ with tab2:
 
     with l3:
         st.error("🔴 HIGH — Crowd control required")
-
