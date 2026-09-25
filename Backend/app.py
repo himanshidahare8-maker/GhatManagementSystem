@@ -25,8 +25,8 @@ from decision_engine import (
 # =========================================================
 
 st.set_page_config(
-    page_title="GhatNetra AI - MPSTDC SIH 2026",
-    page_icon="ðŸ•‰ï¸",
+    page_title="CROWDVISION AI - MPSTDC SIH 2026",
+    page_icon="",
     layout="wide",
     initial_sidebar_state="expanded"
 )
@@ -114,11 +114,11 @@ st.sidebar.image(
     width=80
 )
 
-st.sidebar.title("ðŸŽ›ï¸ Command Controls")
+st.sidebar.title("Command Controls")
 
 
 selected_ghat = st.sidebar.selectbox(
-    "ðŸ“ Select Ghat Location",
+    " Select Ghat Location",
     [
         "Ujjain - Ram Ghat (Shipra River)",
         "Ujjain - Narsingh Ghat (Shipra River)",
@@ -129,7 +129,7 @@ selected_ghat = st.sidebar.selectbox(
 )
 
 
-st.sidebar.subheader("ðŸ“ Zone Capacity Limits")
+st.sidebar.subheader("Zone Capacity Limits")
 
 cap_zone_a = st.sidebar.slider(
     "Zone A (Entry Steps)",
@@ -164,7 +164,7 @@ TOTAL_CAPACITY = (
 # TOP BANNER
 # =========================================================
 
-st.title("\U0001F549\U0000FE0F GhatNetra AI (\u0918\u093E\u091F-\u0928\u0947\u0924\u094D\u0930)")
+st.title("\U0001F549\U0000FE0F CrowdVision AI ")
 
 st.subheader(
     "Madhya Pradesh State Tourism Development Corporation Limited (MPSTDC)"
@@ -178,11 +178,11 @@ st.write(
 c1, c2 = st.columns(2)
 
 with c1:
-    st.write("ðŸ“ **Ujjain Ram Ghat (Shipra River)**")
+    st.write("Ujjain Ram Ghat (Shipra River)**")
 
 with c2:
     st.write(
-        "ðŸŒ¤ï¸ 31Â°C  |  River Flow: 1.2 m/s  |  Aarti: 18:30 IST"
+        "31°C  |  River Flow: 1.2 m/s  |  Aarti: 18:30 IST"
     )
 
 st.divider()
@@ -292,7 +292,7 @@ with tab1:
 
 
         start_btn = st.button(
-            "â–¶ï¸ Start Live Crowd Processing",
+            "Start Live Crowd Processing",
             type="primary",
             key="start_live"
         )
@@ -305,7 +305,7 @@ with tab1:
     with c_right:
 
         st.subheader(
-            "ðŸ›¡ï¸ AI Gate & Decision Status"
+            "AI Gate & Decision Status"
         )
 
         m_placeholder = st.empty()
@@ -330,7 +330,7 @@ with tab1:
         if not MODEL_PATH.exists():
 
             st.error(
-                f"âŒ YOLO model not found:\n\n"
+                f"YOLO model not found:\n\n"
                 f"{MODEL_PATH}"
             )
 
@@ -373,7 +373,7 @@ with tab1:
         if model is None:
 
             st.error(
-                "âŒ YOLO model load nahi hua."
+                "YOLO model load nahi hua."
             )
 
             st.stop()
@@ -396,7 +396,7 @@ with tab1:
         if not video.isOpened():
 
             st.error(
-                f"âŒ Video open nahi ho rahi:\n{VIDEO_PATH}"
+                f"Video open nahi ho rahi:\n{VIDEO_PATH}"
             )
 
             st.stop()
@@ -1272,7 +1272,7 @@ with tab3:
 
 with tab2:
 
-    st.subheader("ðŸŒ¡ï¸ Density Heatmap & Crowd Flow")
+    st.subheader("Density Heatmap & Crowd Flow")
 
     st.caption(
         "AI-based crowd density monitoring for the selected ghat."
@@ -1397,28 +1397,28 @@ with tab2:
     # FLOW DIRECTION
     # ---------------------------------------------------------
 
-    st.markdown("### âž¡ï¸ Crowd Flow Direction")
+    st.markdown("### Crowd Flow Direction")
 
     flow_col1, flow_col2, flow_col3 = st.columns(3)
 
     with flow_col1:
         st.metric(
             "Zone A → Zone B",
-            "â†—ï¸ INCOMING",
+            "INCOMING",
             "Crowd moving toward central area"
         )
 
     with flow_col2:
         st.metric(
             "Zone B → Zone C",
-            "âž¡ï¸ OUTGOING",
+            "OUTGOING",
             "Crowd moving toward exit"
         )
 
     with flow_col3:
         st.metric(
             "Overall Flow",
-            "âž¡ï¸ NORMAL",
+            "NORMAL",
             "No critical congestion"
         )
 
