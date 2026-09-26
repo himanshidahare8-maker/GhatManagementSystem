@@ -1167,6 +1167,514 @@ with tab1:
 # TREND & 60-MIN PREDICTION
 # =========================================================
 
+
+# =========================================================
+# TAB 4
+# GHAT GIS MAP & DIVERSIONS
+# =========================================================
+
+with tab4:
+
+    st.subheader("🗺️ Ghat GIS Map & Diversions")
+
+    st.caption(
+        "GIS-based crowd zones, entry/exit points and safe diversion routes."
+    )
+
+    # -----------------------------------------------------
+    # CURRENT CROWD STATUS
+    # -----------------------------------------------------
+
+    current_crowd = 53
+
+    c1, c2, c3, c4 = st.columns(4)
+
+    with c1:
+        st.metric("👥 Total Crowd", "53")
+
+    with c2:
+        st.metric("🟢 Safe Zone", "Zone A")
+
+    with c3:
+        st.metric("🟡 Monitoring", "Zone B")
+
+    with c4:
+        st.metric("🔴 High Risk", "Zone C")
+
+    st.divider()
+
+    # -----------------------------------------------------
+    # GHAT MAP
+    # -----------------------------------------------------
+
+    st.markdown("### 🗺️ Ghat Crowd & Diversion Map")
+
+    map_html = """
+    <div style="
+        width:100%;
+        height:500px;
+        border-radius:18px;
+        padding:20px;
+        background:linear-gradient(135deg,#dbeafe,#eff6ff);
+        position:relative;
+        border:2px solid #94a3b8;
+        overflow:hidden;
+    ">
+
+        <div style="
+            position:absolute;
+            right:0;
+            top:0;
+            width:35%;
+            height:100%;
+            background:#60a5fa;
+            opacity:0.75;
+        ">
+            <div style="
+                text-align:center;
+                margin-top:220px;
+                color:white;
+                font-size:22px;
+                font-weight:bold;
+            ">
+                RIVER
+            </div>
+        </div>
+
+        <div style="
+            position:absolute;
+            left:8%;
+            top:15%;
+            width:48%;
+            height:25%;
+            background:#86efac;
+            border:3px solid #15803d;
+            border-radius:15px;
+            text-align:center;
+            padding-top:45px;
+            font-size:22px;
+            font-weight:bold;
+        ">
+            🟢 ZONE A<br>
+            <span style="font-size:16px;">13 People — SAFE</span>
+        </div>
+
+        <div style="
+            position:absolute;
+            left:8%;
+            top:45%;
+            width:48%;
+            height:25%;
+            background:#fde68a;
+            border:3px solid #ca8a04;
+            border-radius:15px;
+            text-align:center;
+            padding-top:45px;
+            font-size:22px;
+            font-weight:bold;
+        ">
+            🟡 ZONE B<br>
+            <span style="font-size:16px;">26 People — MONITOR</span>
+        </div>
+
+        <div style="
+            position:absolute;
+            left:8%;
+            top:75%;
+            width:48%;
+            height:18%;
+            background:#fecaca;
+            border:3px solid #dc2626;
+            border-radius:15px;
+            text-align:center;
+            padding-top:28px;
+            font-size:22px;
+            font-weight:bold;
+        ">
+            🔴 ZONE C — 14 People
+        </div>
+
+        <div style="
+            position:absolute;
+            left:2%;
+            top:5%;
+            background:#1d4ed8;
+            color:white;
+            padding:10px 16px;
+            border-radius:20px;
+            font-weight:bold;
+        ">
+            🚪 ENTRY GATE
+        </div>
+
+        <div style="
+            position:absolute;
+            left:58%;
+            top:8%;
+            background:#15803d;
+            color:white;
+            padding:10px 16px;
+            border-radius:20px;
+            font-weight:bold;
+        ">
+            🚪 EXIT GATE
+        </div>
+
+        <div style="
+            position:absolute;
+            left:58%;
+            top:45%;
+            background:#f97316;
+            color:white;
+            padding:12px 18px;
+            border-radius:20px;
+            font-weight:bold;
+        ">
+            ➡️ DIVERSION ROUTE
+        </div>
+
+        <div style="
+            position:absolute;
+            left:58%;
+            top:70%;
+            background:#7c3aed;
+            color:white;
+            padding:12px 18px;
+            border-radius:20px;
+            font-weight:bold;
+        ">
+            🚨 EMERGENCY ROUTE
+        </div>
+
+    </div>
+    """
+
+    st.components.v1.html(
+        map_html,
+        height=540
+    )
+
+    st.divider()
+
+    # -----------------------------------------------------
+    # DIVERSION RECOMMENDATION
+    # -----------------------------------------------------
+
+    st.markdown("### 🚦 AI Diversion Recommendation")
+
+    d1, d2 = st.columns(2)
+
+    with d1:
+
+        st.success(
+            "🟢 ENTRY: Normal entry is allowed through the main gate."
+        )
+
+        st.warning(
+            "🟡 ZONE B: Crowd monitoring recommended due to increasing density."
+        )
+
+    with d2:
+
+        st.info(
+            "➡️ DIVERSION: Visitors can be redirected through the alternate route."
+        )
+
+        st.error(
+            "🚨 EMERGENCY: Emergency route should remain clear."
+        )
+
+    st.markdown("### 📍 Zone-wise GIS Status")
+
+    gis_data = pd.DataFrame({
+        "Zone": ["Zone A", "Zone B", "Zone C"],
+        "Crowd": [13, 26, 14],
+        "Status": ["SAFE", "MONITOR", "SAFE"],
+        "Recommended Action": [
+            "Normal Movement",
+            "Monitor Crowd",
+            "Normal Movement"
+        ]
+    })
+
+    st.dataframe(
+        gis_data,
+        width="stretch",
+        hide_index=True
+    )
+
+# =========================================================
+# TAB 5
+# AI LOST PERSON SEARCH
+# =========================================================
+
+with tab5:
+
+    st.subheader("🔍 AI Lost Person Search")
+
+    st.caption(
+        "AI-assisted search system for locating a missing person "
+        "using surveillance footage and zone information."
+    )
+
+    c1, c2 = st.columns([1, 1])
+
+    with c1:
+
+        st.markdown("### 📷 Upload Person Image")
+
+        uploaded_person = st.file_uploader(
+            "Upload a reference image",
+            type=["jpg", "jpeg", "png"],
+            key="lost_person_upload"
+        )
+
+        if uploaded_person is not None:
+            st.image(
+                uploaded_person,
+                caption="Reference Person",
+                width="stretch"
+            )
+
+    with c2:
+
+        st.markdown("### 🧠 AI Search")
+
+        search_button = st.button(
+            "🔎 Search in Surveillance",
+            type="primary",
+            use_container_width=True
+        )
+
+        if search_button:
+
+            st.success("✅ Person search completed.")
+
+            st.metric(
+                "🎯 Match Confidence",
+                "92%"
+            )
+
+            st.metric(
+                "📍 Last Detected Zone",
+                "Zone B"
+            )
+
+            st.metric(
+                "⏰ Last Detection",
+                "12:08 PM"
+            )
+
+    st.divider()
+
+    st.markdown("### 📊 Search Result")
+
+    result_data = pd.DataFrame({
+        "Person ID": ["P-1024"],
+        "Match Confidence": ["92%"],
+        "Last Detected Zone": ["Zone B"],
+        "Detection Time": ["12:08 PM"],
+        "Status": ["Located"]
+    })
+
+    st.dataframe(
+        result_data,
+        width="stretch",
+        hide_index=True
+    )
+
+    st.markdown("### 🚨 Authority Alert")
+
+    st.info(
+        "The system can notify authorized personnel when a possible "
+        "match is detected in surveillance footage."
+    )
+
+    st.markdown("### 📍 Suggested Search Area")
+
+    s1, s2, s3 = st.columns(3)
+
+    with s1:
+        st.metric("Zone A", "Low Match")
+
+    with s2:
+        st.metric("Zone B", "High Match")
+
+    with s3:
+        st.metric("Zone C", "No Match")
+
+
+
+# =========================================================
+# TAB 6
+# WHAT-IF SIMULATION SANDBOX
+# =========================================================
+
+with tab6:
+
+    st.subheader("🧪 'What-If' Simulation Sandbox")
+
+    st.caption(
+        "Simulate different crowd conditions and evaluate "
+        "possible safety actions before implementing them."
+    )
+
+    st.markdown("### 🎛️ Simulation Controls")
+
+    c1, c2 = st.columns(2)
+
+    with c1:
+
+        simulated_crowd = st.slider(
+            "👥 Simulated Crowd",
+            min_value=10,
+            max_value=200,
+            value=53,
+            step=5
+        )
+
+        entry_rate = st.slider(
+            "🚪 Entry Rate (people/min)",
+            min_value=0,
+            max_value=30,
+            value=8
+        )
+
+    with c2:
+
+        exit_rate = st.slider(
+            "🚶 Exit Rate (people/min)",
+            min_value=0,
+            max_value=30,
+            value=5
+        )
+
+        gate_control = st.selectbox(
+            "🚪 Gate Control",
+            [
+                "Normal Entry",
+                "Controlled Entry",
+                "Temporary Entry Restriction"
+            ]
+        )
+
+    net_flow = entry_rate - exit_rate
+
+    if simulated_crowd >= 150:
+        risk = "🔴 HIGH"
+        recommendation = "Restrict entry and activate diversion routes."
+    elif simulated_crowd >= 100:
+        risk = "🟠 MODERATE"
+        recommendation = "Use controlled entry and monitor crowd movement."
+    else:
+        risk = "🟢 LOW"
+        recommendation = "Normal crowd movement can continue."
+
+    if net_flow > 10:
+        flow_status = "🔴 Crowd Increasing Rapidly"
+    elif net_flow > 0:
+        flow_status = "🟡 Crowd Increasing"
+    elif net_flow < 0:
+        flow_status = "🟢 Crowd Decreasing"
+    else:
+        flow_status = "⚪ Crowd Stable"
+
+    st.divider()
+
+    st.markdown("### 📊 Simulation Result")
+
+    r1, r2, r3, r4 = st.columns(4)
+
+    with r1:
+        st.metric(
+            "👥 Simulated Crowd",
+            f"{simulated_crowd}"
+        )
+
+    with r2:
+        st.metric(
+            "📈 Net Flow",
+            f"{net_flow}/min"
+        )
+
+    with r3:
+        st.metric(
+            "⚠️ Risk Level",
+            risk
+        )
+
+    with r4:
+        evacuation_time = max(
+            1,
+            int(simulated_crowd / max(exit_rate, 1))
+        )
+
+        st.metric(
+            "⏱️ Evacuation Time",
+            f"{evacuation_time} min"
+        )
+
+    st.markdown("### 🚦 Crowd Flow Status")
+
+    if "HIGH" in risk:
+        st.error(flow_status)
+    elif "MODERATE" in risk:
+        st.warning(flow_status)
+    else:
+        st.success(flow_status)
+
+    st.markdown("### 🤖 AI Recommendation")
+
+    if gate_control == "Temporary Entry Restriction":
+        st.error(
+            "🚨 AI Recommendation: Temporarily restrict entry, "
+            "increase exit flow and activate the emergency diversion route."
+        )
+    elif gate_control == "Controlled Entry":
+        st.warning(
+            "⚠️ AI Recommendation: Maintain controlled entry "
+            "and continuously monitor Zone B and Zone C."
+        )
+    else:
+        st.info(
+            f"ℹ️ AI Recommendation: {recommendation}"
+        )
+
+    st.markdown("### 📋 Scenario Summary")
+
+    scenario_data = pd.DataFrame({
+        "Parameter": [
+            "Simulated Crowd",
+            "Entry Rate",
+            "Exit Rate",
+            "Gate Control",
+            "Net Flow",
+            "Risk Level",
+            "Estimated Evacuation Time"
+        ],
+        "Value": [
+            f"{simulated_crowd} people",
+            f"{entry_rate} people/min",
+            f"{exit_rate} people/min",
+            gate_control,
+            f"{net_flow} people/min",
+            risk,
+            f"{evacuation_time} minutes"
+        ]
+    })
+
+    st.dataframe(
+        scenario_data,
+        width="stretch",
+        hide_index=True
+    )
+
+    st.success(
+        "✅ Simulation completed. Change the controls above "
+        "to test different crowd-management scenarios."
+    )
+
+
 with tab3:
 
     st.subheader("\U0001F4C8 Trend & 60-Min Prediction")
@@ -1482,4 +1990,5 @@ with tab2:
 
     with l3:
         st.error("🔴 HIGH — Crowd control required")
+
 
