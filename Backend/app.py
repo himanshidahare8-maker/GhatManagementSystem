@@ -1413,99 +1413,374 @@ with tab5:
     st.subheader("🔍 AI Lost Person Search")
 
     st.caption(
-        "AI-assisted search system for locating a missing person "
-        "using surveillance footage and zone information."
+        "Search the surveillance video for visual evidence of the uploaded person."
     )
 
     c1, c2 = st.columns([1, 1])
 
     with c1:
 
-        st.markdown("### 📷 Upload Person Image")
+        st.markdown("### 📷 Reference Person")
 
         uploaded_person = st.file_uploader(
-            "Upload a reference image",
+            "Upload the person's reference image",
             type=["jpg", "jpeg", "png"],
             key="lost_person_upload"
         )
 
+        reference_image = None
+
         if uploaded_person is not None:
-            st.image(
-                uploaded_person,
-                caption="Reference Person",
-                width="stretch"
+
+            file_bytes = np.asarray(
+                bytearray(uploaded_person.read()),
+                dtype=np.uint8
             )
+
+            reference_image = cv2.imdecode(
+                file_bytes,
+                cv2.IMREAD_COLOR
+            )
+
+            if reference_image is not None:
+
+                st.image(
+                    cv2.cvtColor(reference_image, cv2.COLOR_BGR2RGB),
+                    caption="Reference Person",
+                    width="stretch"
+                )
 
     with c2:
 
-        st.markdown("### 🧠 AI Search")
+        st.markdown("### 🔎 Surveillance Search")
 
         search_button = st.button(
-            "🔎 Search in Surveillance",
+            "🔎 Search in Surveillance Video",
             type="primary",
             use_container_width=True
         )
 
         if search_button:
 
-            st.success("✅ Person search completed.")
+            if reference_image is None:
 
-            st.metric(
-                "🎯 Match Confidence",
-                "92%"
-            )
+                st.warning(
+                    "⚠️ Please upload a reference person image first."
+                )
 
-            st.metric(
-                "📍 Last Detected Zone",
-                "Zone B"
-            )
+            else:
 
-            st.metric(
-                "⏰ Last Detection",
-                "12:08 PM"
-            )
+                video_candidates = [
+                    "Videos/ghat_crowd.mp4",
+                    "videos/ghat_crowd.mp4",
+                    "ghat_crowd.mp4"
+                ]
 
-    st.divider()
+                video_path = None
 
-    st.markdown("### 📊 Search Result")
+                for candidate in video_candidates:
 
-    result_data = pd.DataFrame({
-        "Person ID": ["P-1024"],
-        "Match Confidence": ["92%"],
-        "Last Detected Zone": ["Zone B"],
-        "Detection Time": ["12:08 PM"],
-        "Status": ["Located"]
-    })
+                    if Path(candidate).exists():
 
-    st.dataframe(
-        result_data,
-        width="stretch",
-        hide_index=True
-    )
+                        video_path = candidate
+                        break
 
-    st.markdown("### 🚨 Authority Alert")
+                if video_path is None:
 
-    st.info(
-        "The system can notify authorized personnel when a possible "
-        "match is detected in surveillance footage."
-    )
+                    st.error(
+                        "❌ Surveillance video not found."
+                    )
 
-    st.markdown("### 📍 Suggested Search Area")
+                else:
 
-    s1, s2, s3 = st.columns(3)
+                    with st.spinner(
+                        "🔍 Scanning surveillance video for visual evidence..."
+                    ):
 
-    with s1:
-        st.metric("Zone A", "Low Match")
+                        # Reference image preprocessing
+                        gray_reference = cv2.cvtColor(
+                            reference_image,
+                            cv2.COLOR_BGR2GRAY
+                        )
 
-    with s2:
-        st.metric("Zone B", "High Match")
+                        orb = cv2.ORB_create(
+                            nfeatures=800
+                        )
 
-    with s3:
-        st.metric("Zone C", "No Match")
+                        kp_ref, des_ref = orb.detectAndCompute(
+                            gray_reference,
+                            None
+                        )
 
+                        # Load YOLO model specifically for lost-person search
+                        search_model = YOLO("yolo11n.pt")
 
+                        cap = cv2.VideoCapture(video_path)
 
-# =========================================================
+                        total_frames = int(
+                            cap.get(cv2.CAP_PROP_FRAME_COUNT)
+                        )
+
+                        fps = cap.get(
+                            cv2.CAP_PROP_FPS
+                        )
+
+                        if fps <= 0:
+                            fps = 25
+
+                        # Scan sampled frames instead of every frame
+                        sample_step = max(
+                            int(fps * 2),
+                            1
+                        )
+
+                        frame_number = 0
+                        best_score = 0
+                        best_time = None
+                        best_zone = None
+
+                        checked_frames = 0
+
+                        progress = st.progress(0)
+
+                        while True:
+
+                            ret, frame = cap.read()
+
+                            if not ret:
+                                break
+
+                            if frame_number % sample_step != 0:
+
+                                frame_number += 1
+                                continue
+
+                            checked_frames += 1
+
+                            results = search_model(
+                                frame,
+                                conf=0.30,
+                                imgsz=640,
+                                classes=[0],
+                                max_det=100,
+                                verbose=False
+                            )
+
+                            frame_h, frame_w = frame.shape[:2]
+
+                            for result in results:
+
+                                if result.boxes is None:
+                                    continue
+
+                                for box in result.boxes.xyxy.cpu().numpy():
+
+                                    x1, y1, x2, y2 = map(
+                                        int,
+                                        box[:4]
+                                    )
+
+                                    x1 = max(0, x1)
+                                    y1 = max(0, y1)
+                                    x2 = min(frame_w, x2)
+                                    y2 = min(frame_h, y2)
+
+                                    if x2 <= x1 or y2 <= y1:
+                                        continue
+
+                                    person_crop = frame[
+                                        y1:y2,
+                                        x1:x2
+                                    ]
+
+                                    if person_crop.size == 0:
+                                        continue
+
+                                    gray_crop = cv2.cvtColor(
+                                        person_crop,
+                                        cv2.COLOR_BGR2GRAY
+                                    )
+
+                                    kp_crop, des_crop = (
+                                        orb.detectAndCompute(
+                                            gray_crop,
+                                            None
+                                        )
+                                    )
+
+                                    if (
+                                        des_ref is None
+                                        or des_crop is None
+                                        or len(kp_ref) < 10
+                                        or len(kp_crop) < 10
+                                    ):
+                                        continue
+
+                                    matcher = cv2.BFMatcher(
+                                        cv2.NORM_HAMMING,
+                                        crossCheck=False
+                                    )
+
+                                    matches = matcher.knnMatch(
+                                        des_ref,
+                                        des_crop,
+                                        k=2
+                                    )
+
+                                    good_matches = []
+
+                                    for pair in matches:
+
+                                        if len(pair) < 2:
+                                            continue
+
+                                        m, n = pair
+
+                                        if m.distance < 0.70 * n.distance:
+
+                                            good_matches.append(m)
+
+                                    score = min(
+                                        100,
+                                        int(
+                                            (
+                                                len(good_matches)
+                                                /
+                                                max(len(kp_ref), 1)
+                                            ) * 100
+                                        )
+                                    )
+
+                                    if score > best_score:
+
+                                        best_score = score
+
+                                        best_time = (
+                                            frame_number / fps
+                                        )
+
+                                        center_x = (
+                                            x1 + x2
+                                        ) / 2
+
+                                        if center_x < frame_w / 3:
+
+                                            best_zone = "Zone A"
+
+                                        elif center_x < (
+                                            2 * frame_w / 3
+                                        ):
+
+                                            best_zone = "Zone B"
+
+                                        else:
+
+                                            best_zone = "Zone C"
+
+                            if total_frames > 0:
+
+                                progress_value = min(
+                                    frame_number / total_frames,
+                                    1.0
+                                )
+
+                                progress.progress(
+                                    progress_value
+                                )
+
+                            frame_number += 1
+
+                        cap.release()
+
+                        progress.progress(1.0)
+
+                    st.divider()
+
+                    # Strict threshold:
+                    # A weak ORB similarity must NOT be reported
+                    # as a confirmed identity match.
+                    if best_score >= 35:
+
+                        minutes = int(
+                            best_time // 60
+                        )
+
+                        seconds = int(
+                            best_time % 60
+                        )
+
+                        st.warning(
+                            "🟡 Possible visual similarity found. "
+                            "This is NOT an identity confirmation."
+                        )
+
+                        r1, r2, r3 = st.columns(3)
+
+                        with r1:
+                            st.metric(
+                                "Visual Similarity",
+                                f"{best_score}%"
+                            )
+
+                        with r2:
+                            st.metric(
+                                "Video Time",
+                                f"{minutes:02d}:{seconds:02d}"
+                            )
+
+                        with r3:
+                            st.metric(
+                                "Detected Zone",
+                                best_zone or "Unknown"
+                            )
+
+                    else:
+
+                        st.success(
+                            "🟢 No verified visual match found in the surveillance video."
+                        )
+
+                        st.caption(
+                            "The uploaded reference person was not verified "
+                            "from the sampled surveillance footage."
+                        )
+
+                    st.markdown("### 📊 Search Summary")
+
+                    search_result = pd.DataFrame({
+                        "Search Item": [
+                            "Reference Image",
+                            "Video Scanned",
+                            "Frames Checked",
+                            "Result",
+                            "Visual Similarity"
+                        ],
+                        "Value": [
+                            uploaded_person.name,
+                            Path(video_path).name,
+                            str(checked_frames),
+                            (
+                                "Possible visual similarity"
+                                if best_score >= 35
+                                else "No verified match"
+                            ),
+                            f"{best_score}%"
+                        ]
+                    })
+
+                    st.dataframe(
+                        search_result,
+                        width="stretch",
+                        hide_index=True
+                    )
+
+                    st.info(
+                        "ℹ️ This prototype uses visual feature matching "
+                        "for screening. A production lost-person system "
+                        "should use a dedicated person re-identification "
+                        "model with proper authorization and privacy controls."
+                    )
+
 # TAB 6
 # WHAT-IF SIMULATION SANDBOX
 # =========================================================
