@@ -110,7 +110,7 @@ st.markdown(
 # =========================================================
 
 st.sidebar.image(
-    "https://upload.wikimedia.org/wikipedia/commons/thumb/8/87/Emblem_of_Madhya_Pradesh.svg/200px-Emblem_of_Madhya_Pradesh.svg.png",
+    "https://chatgpt.com/backend-api/estuary/content?id=file_000000007960821198605b6267f10c3b&ts=497354&p=fs&cid=1&sig=d29062e4237cd281e4199a79c6a0944387fd271ce187f90b90a4e20819e21257&v=0",
     width=80
 )
 
@@ -590,10 +590,10 @@ with tab1:
 
                     results = model(
                         tile,
-                        conf=0.15,
-                        imgsz=640,
+                        conf=0.08,
+                        imgsz=960,
                         classes=[0],
-                        max_det=500,
+                        max_det=1000,
                         verbose=False
                     )
 
