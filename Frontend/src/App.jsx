@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import './App.css'
+import './Landing.css'
 
 function App() {
   const [data, setData] = useState(null)

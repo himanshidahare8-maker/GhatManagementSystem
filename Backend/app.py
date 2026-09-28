@@ -19,6 +19,14 @@ from decision_engine import (
     calculate_evacuation_time
 )
 
+# 🤖 Floating AI Assistant
+if "ai_messages" not in st.session_state:
+    st.session_state.ai_messages = [
+        {
+            "role": "assistant",
+            "content": "Namaste! 👋 Main Crowd Vision AI Assistant hoon. Ghat, crowd, safety aur dashboard se related question pooch sakte hain."
+        }
+    ]
 
 # =========================================================
 # PAGE CONFIGURATION
@@ -31,6 +39,31 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
+# 🤖 Floating AI Assistant UI
+st.markdown("""
+<style>
+.ai-floating-btn {
+    position: fixed;
+    right: 25px;
+    bottom: 25px;
+    width: 65px;
+    height: 65px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #1565C0, #42A5F5);
+    box-shadow: 0 5px 20px rgba(0,0,0,0.35);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 34px;
+    z-index: 9999;
+    text-decoration: none;
+}
+</style>
+
+<a class="ai-floating-btn" href="?ai=open" title="Crowd Vision AI Assistant">
+    🤖
+</a>
+""", unsafe_allow_html=True)
 
 # =========================================================
 # PATH CONFIGURATION
@@ -110,8 +143,8 @@ st.markdown(
 # =========================================================
 
 st.sidebar.image(
-    "https://chatgpt.com/backend-api/estuary/content?id=file_000000007960821198605b6267f10c3b&ts=497354&p=fs&cid=1&sig=d29062e4237cd281e4199a79c6a0944387fd271ce187f90b90a4e20819e21257&v=0",
-    width=80
+    "assets\crowd_vision copy.png",
+    width=600
 )
 
 st.sidebar.title("Command Controls")
@@ -133,23 +166,23 @@ st.sidebar.subheader("Zone Capacity Limits")
 
 cap_zone_a = st.sidebar.slider(
     "Zone A (Entry Steps)",
-    50,
-    300,
-    150
+    20,
+    100,
+    50
 )
 
 cap_zone_b = st.sidebar.slider(
     "Zone B (Central Snan)",
-    50,
-    400,
-    200
+    20,
+    120,
+    60
 )
 
 cap_zone_c = st.sidebar.slider(
     "Zone C (Waterfront/Exit)",
-    50,
-    200,
-    100
+    20,
+    100,
+    50
 )
 
 
@@ -2266,4 +2299,108 @@ with tab2:
     with l3:
         st.error("🔴 HIGH — Crowd control required")
 
+# =========================================================
+# 🤖 CROWD VISION AI ASSISTANT
+# =========================================================
 
+if st.query_params.get("ai") == "open":
+
+    st.markdown("""
+    <div style="
+        position:fixed;
+        right:25px;
+        bottom:100px;
+        width:360px;
+        background:#ffffff;
+        border-radius:18px;
+        box-shadow:0 8px 30px rgba(0,0,0,0.30);
+        padding:18px;
+        z-index:9998;
+        border:1px solid #ddd;
+    ">
+        <h3 style="margin:0;color:#1565C0;">
+            🤖 Crowd Vision AI Assistant
+        </h3>
+        <p style="margin-top:5px;color:#666;">
+            Ask about crowd, safety, zones and ghat management.
+        </p>
+    </div>
+    """, unsafe_allow_html=True)
+
+    # Previous messages
+    for message in st.session_state.ai_messages:
+        with st.chat_message(message["role"]):
+            st.write(message["content"])
+
+    user_question = st.chat_input(
+        "Ask about the Ghat..."
+    )
+
+    if user_question:
+
+        st.session_state.ai_messages.append({
+            "role": "user",
+            "content": user_question
+        })
+
+        q = user_question.lower()
+
+        # Current dashboard demo values
+        current_crowd = 53
+        zone_a = 13
+        zone_b = 26
+        zone_c = 14
+
+        # Simple local AI response system
+        if "crowd" in q and ("kitni" in q or "how many" in q or "current" in q):
+            answer = (
+                f"👥 Current dashboard data ke according total crowd "
+                f"{current_crowd} people hai."
+            )
+
+        elif "zone a" in q:
+            answer = f"🟢 Zone A me currently {zone_a} people detected hain."
+
+        elif "zone b" in q:
+            answer = f"🟡 Zone B me currently {zone_b} people detected hain. Monitoring recommended hai."
+
+        elif "zone c" in q:
+            answer = f"🔴 Zone C me currently {zone_c} people detected hain."
+
+        elif "emergency" in q:
+            answer = (
+                "🚨 Emergency situation me nearest safe exit ki taraf move karein "
+                "aur ghat authority/security personnel ke instructions follow karein."
+            )
+
+        elif "gate" in q:
+            answer = (
+                "🚪 Gate status dashboard ke crowd density aur zone conditions "
+                "ke according controlled entry/exit recommendations provide karta hai."
+            )
+
+        elif "safety" in q:
+            answer = (
+                "🛡️ Safety ke liye crowd density, water-side zones, entry/exit "
+                "gates aur emergency routes ko continuously monitor karein."
+            )
+
+        elif "hello" in q or "hi" in q or "namaste" in q:
+            answer = (
+                "Namaste! 👋 Main Crowd Vision AI Assistant hoon. "
+                "Aap crowd, zones, gates, safety ya emergency ke baare me pooch sakte hain."
+            )
+
+        else:
+            answer = (
+                "🤖 Main Crowd Vision project ke context me crowd management, "
+                "zone status, gate control, safety aur emergency-related questions "
+                "ka answer de sakta hoon."
+            )
+
+        st.session_state.ai_messages.append({
+            "role": "assistant",
+            "content": answer
+        })
+
+        st.rerun()
