@@ -2,7 +2,214 @@ import { useEffect, useState } from 'react'
 import './App.css'
 import './Landing.css'
 
+
+function HomePage({ onLogin }) {
+  return (
+    <div className="landing-page">
+      <header className="landing-nav">
+        <div className="landing-logo">
+          <span className="landing-logo-mark">◢</span>
+          <span>GhatNetra</span>
+        </div>
+
+        <nav className="landing-links">
+          <a href="#home">Home</a>
+          <a href="#about">About</a>
+          <a href="#features">Features</a>
+          <a href="#contact">Contact</a>
+        </nav>
+
+        <button className="landing-login" onClick={onLogin}>
+          Login
+        </button>
+      </header>
+
+      <section className="landing-hero" id="home">
+        <div className="landing-copy">
+          <div className="landing-tagline">
+            AI Powered | Safer Ghats | Smarter Decisions
+          </div>
+
+          <h1>
+            Ghat Crowd
+            <br />
+            <span>Management System</span>
+          </h1>
+
+          <p>
+            Using AI and real-time analytics to monitor crowd movement,
+            estimate occupancy, and provide decision support for safer,
+            better-managed ghats.
+          </p>
+
+          <div className="landing-actions">
+            <button className="landing-primary" onClick={onLogin}>
+              Get Started
+            </button>
+            <a className="landing-secondary" href="#features">
+              Learn More
+            </a>
+          </div>
+        </div>
+
+                <div className="landing-scene">
+          <img
+            src="/image.png"
+            alt="Crowd Vision AI"
+            className="crowd-vision-image"
+          />
+        </div>
+      </section>
+
+      <section className="landing-features" id="features">
+        <div>
+          <div className="feature-icon">◉</div>
+          <strong>Real-time</strong>
+          <span>Crowd Monitoring</span>
+        </div>
+        <div>
+          <div className="feature-icon">✣</div>
+          <strong>AI Based</strong>
+          <span>Prediction</span>
+        </div>
+        <div>
+          <div className="feature-icon">↗</div>
+          <strong>Controlled Entry &amp; Exit</strong>
+          <span>Management</span>
+        </div>
+        <div>
+          <div className="feature-icon">♙</div>
+          <strong>Safer &amp; Smarter</strong>
+          <span>Public Spaces</span>
+        </div>
+      </section>
+
+      <section className="landing-about" id="about">
+        <div>
+          <small>SMART CROWD MANAGEMENT</small>
+          <h2>Technology for safer and better ghats.</h2>
+        </div>
+        <p>
+          CrowdNetra combines computer vision, real-time monitoring and
+          decision support to understand crowd density, movement and safety
+          conditions.
+        </p>
+      </section>
+
+      <footer id="contact">
+        <strong>◢ GhatNetra</strong>
+        <span>Home &nbsp; About &nbsp; Features &nbsp; Contact</span>
+        <span>Safer Ghats • Smarter Decisions • A Better Tomorrow</span>
+      </footer>
+    </div>
+  )
+}
+
+function LoginPage({ onBack, onSuccess }) {
+  const [username, setUsername] = useState('')
+  const [password, setPassword] = useState('')
+  const [message, setMessage] = useState('')
+
+  const handleLogin = (event) => {
+    event.preventDefault()
+
+    if (!username.trim() || !password) {
+      setMessage('Please enter username and password.')
+      return
+    }
+
+    setMessage('')
+    onSuccess()
+  }
+
+  return (
+    <div className="login-screen">
+      <div className="login-left">
+        <button className="login-brand" onClick={onBack}>
+          <span>◢</span> GhatNetra
+        </button>
+
+        <div className="login-intro">
+          <h1>GhatNetra</h1>
+          <p>AI Ghat Crowd Management System</p>
+          <div className="login-quote">
+            “Technology for safer
+            <br />
+            and better ghats.”
+          </div>
+          <div className="login-art">⌁ &nbsp; ॐ &nbsp; ⌁</div>
+        </div>
+      </div>
+
+      <div className="login-right">
+        <form className="login-card" onSubmit={handleLogin}>
+          <h2>Welcome Back</h2>
+          <p>Login to your account</p>
+
+          <label>Email / Username</label>
+          <input
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
+            placeholder="Enter your email or username"
+          />
+
+          <label>Password</label>
+          <input
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            placeholder="Enter your password"
+          />
+
+          <div className="login-options">
+            <span>□ Remember me</span>
+            <span>Forgot password?</span>
+          </div>
+
+          <button className="login-submit" type="submit">
+            Login
+          </button>
+
+          {message && <div className="login-message">{message}</div>}
+
+          <div className="login-note">
+            Don't have an account? &nbsp; Contact admin
+          </div>
+        </form>
+
+        <button className="back-home" onClick={onBack}>
+          ← Back to Home
+        </button>
+      </div>
+    </div>
+  )
+}
+
 function App() {
+  const [page, setPage] = useState('home')
+
+  if (page === 'home') {
+    return <HomePage onLogin={() => setPage('login')} />
+  }
+
+  if (page === 'login') {
+    return (
+      <LoginPage
+        onBack={() => setPage('home')}
+        onSuccess={() => {
+          window.location.href = 'http://localhost:8501'
+        }}
+      />
+    )
+  }
+
+  return <Dashboard />
+}
+
+export default App
+
+
+function Dashboard() {
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
@@ -551,5 +758,3 @@ function App() {
     </div>
   )
 }
-
-export default App
