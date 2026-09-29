@@ -1,3 +1,4 @@
+import emailjs from "@emailjs/browser";
 import { useEffect, useState } from 'react'
 import './App.css'
 import './Landing.css'
@@ -61,44 +62,338 @@ function HomePage({ onLogin }) {
         </div>
       </section>
 
-      <section className="landing-features" id="features">
-        <div>
-          <div className="feature-icon">◉</div>
-          <strong>Real-time</strong>
-          <span>Crowd Monitoring</span>
-        </div>
-        <div>
-          <div className="feature-icon">✣</div>
-          <strong>AI Based</strong>
-          <span>Prediction</span>
-        </div>
-        <div>
-          <div className="feature-icon">↗</div>
-          <strong>Controlled Entry &amp; Exit</strong>
-          <span>Management</span>
-        </div>
-        <div>
-          <div className="feature-icon">♙</div>
-          <strong>Safer &amp; Smarter</strong>
-          <span>Public Spaces</span>
-        </div>
-      </section>
+     <section className="landing-feature-section" id="features">
+  <div className="section-heading">
+    <small>OUR FEATURES</small>
+    <h2>Smart technology for safer crowd management.</h2>
+    <p>
+      CrowdNetra uses AI, real-time monitoring and intelligent decision
+      support to help authorities manage crowded public spaces efficiently.
+    </p>
+  </div>
 
-      <section className="landing-about" id="about">
+  <div className="feature-cards">
+
+    <div className="feature-card">
+      <div className="big-feature-icon">👥</div>
+      <h3>Real-time Crowd Monitoring</h3>
+      <p>
+        AI-powered camera analysis detects people and monitors crowd
+        density in different zones.
+      </p>
+    </div>
+
+    <div className="feature-card">
+      <div className="big-feature-icon">📊</div>
+      <h3>AI Based Prediction</h3>
+      <p>
+        Analyse crowd trends and provide prediction-based decision
+        support for better planning.
+      </p>
+    </div>
+
+    <div className="feature-card">
+      <div className="big-feature-icon">🚪</div>
+      <h3>Controlled Entry &amp; Exit</h3>
+      <p>
+        Monitor entry and exit conditions and support safer movement
+        through crowd control recommendations.
+      </p>
+    </div>
+
+    <div className="feature-card">
+      <div className="big-feature-icon">🛡️</div>
+      <h3>Safety &amp; Alerts</h3>
+      <p>
+        Identify high-density zones and support authorities with
+        timely safety alerts.
+      </p>
+    </div>
+
+    <div className="feature-card">
+      <div className="big-feature-icon">🗺️</div>
+      <h3>Ghat GIS &amp; Diversions</h3>
+      <p>
+        Visualize ghat zones and support safer route and diversion
+        planning.
+      </p>
+    </div>
+
+    <div className="feature-card">
+      <div className="big-feature-icon">🔍</div>
+      <h3>AI Lost Person Search</h3>
+      <p>
+        Assist in searching for a missing person using visual
+        similarity analysis.
+      </p>
+    </div>
+
+  </div>
+</section>
+
+<section className="landing-contact" id="contact">
+
+  <div className="contact-heading">
+    <small>CONTACT US</small>
+    <h2>Let's make public spaces safer.</h2>
+    <p>
+      Have a question about CrowdNetra or want to know more about
+      our crowd management system? Get in touch with us.
+    </p>
+  </div>
+
+  <div className="contact-content">
+
+    <div className="contact-info">
+
+      <div className="contact-item">
+        <span>📧</span>
         <div>
-          <small>SMART CROWD MANAGEMENT</small>
-          <h2>Technology for safer and better ghats.</h2>
+          <strong>Email</strong>
+          <p>support@crowdnetra.ai</p>
         </div>
+      </div>
+
+      <div className="contact-item">
+        <span>📍</span>
+        <div>
+          <strong>Location</strong>
+          <p>Madhya Pradesh, India</p>
+        </div>
+      </div>
+
+      <div className="contact-item">
+        <span>🏢</span>
+        <div>
+          <strong>Organization</strong>
+          <p>MPSTDC</p>
+        </div>
+      </div>
+
+    </div>
+
+   <div className="contact-card">
+  <h3>Get in Touch</h3>
+
+  <form
+    onSubmit={(e) => {
+      e.preventDefault()
+
+      const form = e.currentTarget
+      const name = form.name.value.trim()
+      const email = form.email.value.trim()
+      const message = form.message.value.trim()
+
+      if (!name || !email || !message) {
+        alert("Please fill in all fields.")
+        return
+      }
+
+      if (!email.includes("@")) {
+        alert("Please enter a valid email address.")
+        return
+      }
+
+      alert("Message sent successfully!")
+
+      form.reset()
+    }}
+  >
+
+    <input
+      type="text"
+      name="name"
+      placeholder="Your Name"
+    />
+
+    <input
+      type="email"
+      name="email"
+      placeholder="Your Email"
+    />
+
+    <textarea
+      name="message"
+      placeholder="Your Message"
+      rows="4"
+    />
+
+    <button type="submit">
+      Send Message
+    </button>
+
+  </form>
+</div>
+
+  </div>
+
+</section>
+
+     <section className="landing-about-page" id="about">
+
+  <div className="about-top">
+    <small>SMART CROWD MANAGEMENT</small>
+
+    <h2>
+      Transforming <span>Ghat Safety</span>
+    </h2>
+
+    <p>
+      AI-powered technology for safer, smarter and better-managed
+      public spaces.
+    </p>
+  </div>
+
+  <div className="about-content">
+
+    <div className="about-image-card">
+      <img
+        src="/image.png"
+        alt="CrowdNetra AI Crowd Monitoring"
+      />
+    </div>
+
+    <div className="about-text">
+
+      <h3>
+        Revolutionizing <span>Crowd Management</span>
+      </h3>
+
+      <p>
+        CrowdNetra combines computer vision, real-time monitoring
+        and intelligent decision support to help authorities
+        understand crowd density, movement and safety conditions.
+      </p>
+
+      <div className="about-info-card">
+        <h4>AI-Powered Crowd Monitoring</h4>
         <p>
-          CrowdNetra combines computer vision, real-time monitoring and
-          decision support to understand crowd density, movement and safety
-          conditions.
+          AI-based camera analysis detects people and monitors
+          crowd density across different zones in real time.
         </p>
-      </section>
+      </div>
+
+      <div className="about-info-card">
+        <h4>Predictive Decision Support</h4>
+        <p>
+          Crowd trends and occupancy information help authorities
+          plan safer entry, exit and crowd-control strategies.
+        </p>
+      </div>
+
+      <div className="about-info-card">
+        <h4>Safer Public Spaces</h4>
+        <p>
+          Zone monitoring, safety alerts and intelligent
+          recommendations support faster response during crowded
+          situations.
+        </p>
+      </div>
+
+    </div>
+
+  </div>
+
+</section>
+<section className="landing-contact-page" id="contact">
+
+  <div className="contact-top">
+    <small>GET IN TOUCH</small>
+
+    <h2>
+      Contact <span>CrowdNetra</span>
+    </h2>
+
+    <p>
+      Connect with us for information, support and collaboration
+      related to smart crowd management.
+    </p>
+  </div>
+
+  <div className="contact-content">
+
+    <div className="contact-image-card">
+      <img
+        src="/image.png"
+        alt="CrowdNetra Contact"
+      />
+    </div>
+
+    <div className="contact-details">
+
+      <div className="contact-info-card">
+        <div className="contact-icon">🏢</div>
+
+        <div>
+          <h3>Our Office</h3>
+
+          <p>
+            Madhya Pradesh, India
+          </p>
+
+          <p>
+            Smart Ghat Management Project
+          </p>
+        </div>
+      </div>
+
+
+      <div className="contact-info-card">
+        <div className="contact-icon">📞</div>
+
+        <div>
+          <h3>Get in Touch</h3>
+
+          <p>
+            Email: support@crowdnetra.ai
+          </p>
+
+          <p>
+            Phone: +91 XXXXX XXXXX
+          </p>
+        </div>
+      </div>
+
+
+      <div className="contact-info-card">
+        <div className="contact-icon">🤖</div>
+
+        <div>
+          <h3>AI Support</h3>
+
+          <p>
+            Ask about crowd monitoring, zones, safety,
+            gates and decision support.
+          </p>
+        </div>
+      </div>
+
+    </div>
+
+  </div>
+
+
+  <div className="contact-support">
+
+    <div>
+      <h2>Need assistance?</h2>
+
+      <p>
+        Our smart crowd management system helps authorities
+        monitor and respond to crowd situations efficiently.
+      </p>
+    </div>
+
+    <a href="#home">
+      Back to Home
+    </a>
+
+  </div>
+
+</section>
 
       <footer id="contact">
         <strong>◢ GhatNetra</strong>
-        <span>Home &nbsp; About &nbsp; Features &nbsp; Contact</span>
         <span>Safer Ghats • Smarter Decisions • A Better Tomorrow</span>
       </footer>
     </div>
