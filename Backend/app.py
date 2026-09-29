@@ -12,6 +12,7 @@ import time
 from pathlib import Path
 from datetime import datetime, timedelta
 from ultralytics import YOLO
+import base64
 
 from decision_engine import (
     evaluate_zone_status,
@@ -38,32 +39,92 @@ st.set_page_config(
     layout="wide",
     initial_sidebar_state="expanded"
 )
+# =========================================================
+# 🤖 FLOATING AI ASSISTANT UI
+# =========================================================
 
-# 🤖 Floating AI Assistant UI
-st.markdown("""
-<style>
-.ai-floating-btn {
-    position: fixed;
-    right: 25px;
-    bottom: 25px;
-    width: 65px;
-    height: 65px;
-    border-radius: 50%;
-    background: linear-gradient(135deg, #1565C0, #42A5F5);
-    box-shadow: 0 5px 20px rgba(0,0,0,0.35);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 34px;
-    z-index: 9999;
-    text-decoration: none;
-}
-</style>
+ROBOT_IMAGE = Path(__file__).resolve().parent / "assets" / "ai_robot.png"
 
-<a class="ai-floating-btn" href="?ai=open" title="Crowd Vision AI Assistant">
-    🤖
-</a>
-""", unsafe_allow_html=True)
+if ROBOT_IMAGE.exists():
+
+    robot_base64 = base64.b64encode(
+        ROBOT_IMAGE.read_bytes()
+    ).decode("utf-8")
+
+    st.markdown(
+        f"""
+        <style>
+
+        .ai-floating-btn {{
+            position: fixed;
+            right: 24px;
+            bottom: 24px;
+            width: 82px;
+            height: 82px;
+            z-index: 9999;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-decoration: none;
+            cursor: pointer;
+            transition: transform 0.25s ease, filter 0.25s ease;
+        }}
+
+        .ai-floating-btn:hover {{
+            transform: scale(1.10);
+            filter: drop-shadow(0 8px 18px rgba(21, 101, 192, 0.35));
+        }}
+
+        .ai-floating-btn img {{
+            width: 82px;
+            height: 82px;
+            object-fit: contain;
+            filter: drop-shadow(0 6px 12px rgba(0, 0, 0, 0.25));
+        }}
+
+        </style>
+
+        <a class="ai-floating-btn"
+           href="?ai=open"
+           title="Crowd Vision AI Assistant">
+            <img src="data:image/png;base64,{robot_base64}"
+                 alt="Crowd Vision AI Assistant">
+        </a>
+        """,
+        unsafe_allow_html=True
+    )
+
+else:
+
+    st.markdown(
+        """
+        <style>
+        .ai-floating-btn {
+            position: fixed;
+            right: 24px;
+            bottom: 24px;
+            width: 65px;
+            height: 65px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #1565C0, #42A5F5);
+            box-shadow: 0 6px 20px rgba(0,0,0,0.30);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 32px;
+            z-index: 9999;
+            text-decoration: none;
+        }
+        </style>
+        <a class="ai-floating-btn"
+           href="?ai=open"
+           title="Crowd Vision AI Assistant">
+            🤖
+        </a>
+        """,
+        unsafe_allow_html=True
+    )
+
 
 # =========================================================
 # PATH CONFIGURATION
@@ -144,7 +205,7 @@ st.markdown(
 
 st.sidebar.image(
     "assets\crowd_vision copy.png",
-    width=600
+    width=450
 )
 
 st.sidebar.title("Command Controls")
