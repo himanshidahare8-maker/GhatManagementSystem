@@ -152,6 +152,62 @@ VIDEO_PATH = find_video()
 
 
 # =========================================================
+# ALERT SYSTEM (added; existing dashboard logic retained)
+# =========================================================
+HIGH_OCCUPANCY_PERCENT = 75
+CRITICAL_OCCUPANCY_PERCENT = 90
+
+
+def build_crowd_alerts(zone_counts, zones):
+    alerts = []
+    for zone_name, count in zone_counts.items():
+        capacity = zones[zone_name]["capacity"]
+        if capacity <= 0:
+            continue
+        occupancy = (count / capacity) * 100
+        if occupancy >= CRITICAL_OCCUPANCY_PERCENT:
+            alerts.append({
+                "type": "CRITICAL CROWD",
+                "zone": zone_name,
+                "occupancy": round(occupancy, 1),
+                "severity": "CRITICAL",
+                "message": (
+                    f"{zone_name} occupancy is {occupancy:.1f}%. "
+                    "Notify safety personnel and follow the approved "
+                    "site emergency plan."
+                )
+            })
+        elif occupancy >= HIGH_OCCUPANCY_PERCENT:
+            alerts.append({
+                "type": "HIGH CROWD",
+                "zone": zone_name,
+                "occupancy": round(occupancy, 1),
+                "severity": "HIGH",
+                "message": (
+                    f"{zone_name} occupancy is {occupancy:.1f}%. "
+                    "Review entry restrictions and monitor the zone."
+                )
+            })
+    return alerts
+
+
+if "active_crowd_alert_keys" not in st.session_state:
+    st.session_state.active_crowd_alert_keys = set()
+if "crowd_alert_history" not in st.session_state:
+    st.session_state.crowd_alert_history = []
+if "latest_crowd_alerts" not in st.session_state:
+    st.session_state.latest_crowd_alerts = []
+if "manual_emergency_alerts" not in st.session_state:
+    st.session_state.manual_emergency_alerts = []
+if "latest_zone_counts" not in st.session_state:
+    st.session_state.latest_zone_counts = {}
+if "latest_total_people" not in st.session_state:
+    st.session_state.latest_total_people = None
+if "latest_overall_status" not in st.session_state:
+    st.session_state.latest_overall_status = "Waiting for video analysis"
+
+
+# =========================================================
 # CUSTOM STYLING
 # =========================================================
 
@@ -203,10 +259,14 @@ st.markdown(
 # SIDEBAR
 # =========================================================
 
-st.sidebar.image(
-    "assets\crowd_vision copy.png",
-    width=450
-)
+# Load the sidebar logo only if it exists; check both backend/assets and project/assets.
+logo_candidates = [
+    Path(__file__).resolve().parent / "assets" / "crowd_vision copy.png",
+    Path(__file__).resolve().parent.parent / "assets" / "crowd_vision copy.png",
+]
+logo_path = next((path for path in logo_candidates if path.is_file()), None)
+if logo_path is not None:
+    st.sidebar.image(str(logo_path), width=450)
 
 st.sidebar.title("Command Controls")
 
@@ -280,6 +340,69 @@ with c2:
     )
 
 st.divider()
+
+# Top-right alert bell (added)
+_alert_count = len(st.session_state.latest_crowd_alerts) + len(st.session_state.manual_emergency_alerts)
+_alert_spacer, _alert_col = st.columns([9.5, 1.5])
+with _alert_col:
+    with st.popover(f"🔔 ALERTS ({_alert_count})", use_container_width=True):
+        st.markdown("### 🚨 Emergency Alerts")
+        _all_alerts = list(st.session_state.latest_crowd_alerts) + list(st.session_state.manual_emergency_alerts)
+        if _all_alerts:
+            for _alert in _all_alerts:
+                _zone_text = _alert.get("zone", "Ghat-wide")
+                _occupancy_text = f"\n\n{_alert['occupancy']}% occupancy" if "occupancy" in _alert else ""
+                _alert_text = (
+                    f"**{_alert['severity']} — {_alert['type']}**\n\n"
+                    f"{_zone_text}{_occupancy_text}\n\n"
+                    f"{_alert['message']}"
+                )
+                if _alert["severity"] == "CRITICAL":
+                    st.error(_alert_text)
+                else:
+                    st.warning(_alert_text)
+        else:
+            st.success("No active emergency alerts.")
+
+        st.markdown("#### Report an Emergency")
+        st.caption("Fire/medical/exit alerts are manually reportable in this prototype; they are not automatically detected.")
+        _emergency_type = st.selectbox(
+            "Emergency type",
+            ["Fire / Smoke", "Medical Emergency", "Blocked Exit", "Stampede Risk", "Water Level Warning"],
+            key="manual_emergency_type"
+        )
+        _emergency_zone = st.selectbox(
+            "Affected area",
+            ["Ghat-wide", "Zone A", "Zone B", "Zone C"],
+            key="manual_emergency_zone"
+        )
+        if st.button("🚨 Report Emergency", key="report_emergency_alert", use_container_width=True):
+            _severity = "CRITICAL" if _emergency_type in ["Fire / Smoke", "Stampede Risk"] else "HIGH"
+            _manual_alert = {
+                "type": _emergency_type.upper(),
+                "zone": _emergency_zone,
+                "severity": _severity,
+                "message": "Emergency reported manually. Notify on-site safety staff and follow the approved emergency response plan.",
+                "time": datetime.now().strftime("%d-%m-%Y %H:%M:%S"),
+            }
+            st.session_state.manual_emergency_alerts.insert(0, _manual_alert)
+            st.session_state.crowd_alert_history.insert(0, _manual_alert.copy())
+            st.session_state.crowd_alert_history = st.session_state.crowd_alert_history[:50]
+            st.rerun()
+        if st.session_state.manual_emergency_alerts:
+            if st.button("Clear reported emergency alerts", key="clear_manual_emergency_alerts", use_container_width=True):
+                st.session_state.manual_emergency_alerts = []
+                st.rerun()
+
+        st.markdown("#### Recent Alert History")
+        if st.session_state.crowd_alert_history:
+            for _old_alert in st.session_state.crowd_alert_history[:10]:
+                st.write(
+                    f"{_old_alert['time']} — {_old_alert['severity']} — "
+                    f"{_old_alert['zone']}: {_old_alert['type']}"
+                )
+        else:
+            st.caption("No alerts recorded yet.")
 
 
 # =========================================================
@@ -407,6 +530,7 @@ with tab1:
         gate_placeholder = st.empty()
 
         route_placeholder = st.empty()
+        alert_placeholder = st.empty()  # added for live crowd alerts
 
 
     # =====================================================
@@ -1062,6 +1186,40 @@ with tab1:
                 )
             )
 
+            # Keep the latest AI/YOLO analysis available to the assistant.
+            st.session_state.latest_zone_counts = dict(zone_counts)
+            st.session_state.latest_total_people = int(total_people)
+            st.session_state.latest_overall_status = str(overall_stat)
+
+            # Update active crowd alerts using the current detected zone counts.
+            current_alerts = build_crowd_alerts(zone_counts, ZONES)
+            st.session_state.latest_crowd_alerts = [dict(a) for a in current_alerts]
+            current_alert_keys = {(a["type"], a["zone"]) for a in current_alerts}
+            for alert in current_alerts:
+                key = (alert["type"], alert["zone"])
+                if key not in st.session_state.active_crowd_alert_keys:
+                    alert["time"] = datetime.now().strftime("%d-%m-%Y %H:%M:%S")
+                    st.session_state.crowd_alert_history.insert(0, alert)
+            st.session_state.crowd_alert_history = st.session_state.crowd_alert_history[:50]
+            st.session_state.active_crowd_alert_keys = current_alert_keys
+
+            with alert_placeholder.container():
+                st.markdown("### 🚨 Automatic Crowd Alerts")
+                st.caption("Alerts are based on zone occupancy. Fire/smoke and medical-event detectors are not connected in this prototype.")
+                if current_alerts:
+                    for alert in current_alerts:
+                        message = (
+                            f"**{alert['severity']} — {alert['type']}**\n\n"
+                            f"{alert['zone']}: {alert['occupancy']}% occupancy\n\n"
+                            f"{alert['message']}"
+                        )
+                        if alert["severity"] == "CRITICAL":
+                            st.error(message)
+                        else:
+                            st.warning(message)
+                else:
+                    st.success("No active high/critical crowd alerts.")
+
 
             # =================================================
             # TOP INFORMATION
@@ -1218,7 +1376,6 @@ with tab1:
                             "🟠 HIGH DENSITY: "
                             "Reduce incoming crowd."
                         )
-
                     else:
 
                         st.success(
@@ -1261,204 +1418,280 @@ with tab1:
 # TREND & 60-MIN PREDICTION
 # =========================================================
 
+# -----------------------------------------------------
+# REAL GHAT GIS MAP
+# -----------------------------------------------------
 
-# =========================================================
-# TAB 4
-# GHAT GIS MAP & DIVERSIONS
-# =========================================================
+st.markdown("### 🗺️ Ram Ghat GIS Crowd & Diversion Map")
 
-with tab4:
+map_html = """
+<!DOCTYPE html>
+<html>
+<head>
 
-    st.subheader("🗺️ Ghat GIS Map & Diversions")
+<link rel="stylesheet"
+href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 
-    st.caption(
-        "GIS-based crowd zones, entry/exit points and safe diversion routes."
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+<style>
+#ramghatmap {
+    width: 100%;
+    height: 520px;
+    border-radius: 18px;
+    border: 2px solid #94a3b8;
+}
+.legend {
+    background: white;
+    padding: 10px;
+    line-height: 20px;
+    border-radius: 8px;
+    box-shadow: 0 0 8px rgba(0,0,0,0.2);
+}
+</style>
+
+</head>
+
+<body>
+
+<div id="ramghatmap"></div>
+
+<script>
+
+var map = L.map('ramghatmap').setView(
+    [23.1854, 75.7633],
+    17
+);
+
+L.tileLayer(
+    'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+    {
+        maxZoom: 19,
+        attribution: '&copy; OpenStreetMap contributors'
+    }
+).addTo(map);
+
+
+// ===============================
+// RAM GHAT
+// ===============================
+
+L.marker([23.1854, 75.7633])
+    .addTo(map)
+    .bindPopup(
+        "<b>📍 Ram Ghat, Ujjain</b><br>" +
+        "Crowd Vision AI Monitoring Area"
     )
+    .openPopup();
 
-    # -----------------------------------------------------
-    # CURRENT CROWD STATUS
-    # -----------------------------------------------------
 
-    current_crowd = 53
+// ===============================
+// CROWD ZONES
+// ===============================
 
-    c1, c2, c3, c4 = st.columns(4)
+L.circle(
+    [23.1859, 75.7628],
+    {
+        radius: 80,
+        color: "green",
+        fillColor: "green",
+        fillOpacity: 0.25
+    }
+)
+.addTo(map)
+.bindPopup(
+    "<b>🟢 Zone A</b><br>Safe / Normal Movement"
+);
 
-    with c1:
-        st.metric("👥 Total Crowd", "53")
 
-    with c2:
-        st.metric("🟢 Safe Zone", "Zone A")
+L.circle(
+    [23.1853, 75.7635],
+    {
+        radius: 80,
+        color: "orange",
+        fillColor: "yellow",
+        fillOpacity: 0.30
+    }
+)
+.addTo(map)
+.bindPopup(
+    "<b>🟡 Zone B</b><br>Monitor Crowd"
+);
 
-    with c3:
-        st.metric("🟡 Monitoring", "Zone B")
 
-    with c4:
-        st.metric("🔴 High Risk", "Zone C")
+L.circle(
+    [23.1847, 75.7641],
+    {
+        radius: 80,
+        color: "red",
+        fillColor: "red",
+        fillOpacity: 0.25
+    }
+)
+.addTo(map)
+.bindPopup(
+    "<b>🔴 Zone C</b><br>High Crowd / Monitoring"
+);
 
-    st.divider()
 
-    # -----------------------------------------------------
-    # GHAT MAP
-    # -----------------------------------------------------
+// ===============================
+// ENTRY
+// ===============================
 
-    st.markdown("### 🗺️ Ghat Crowd & Diversion Map")
+L.marker([23.1861, 75.7624])
+    .addTo(map)
+    .bindPopup(
+        "<b>🚪 Entry Point</b><br>" +
+        "Proposed / Prototype Location"
+    );
 
-    map_html = """
-    <div style="
-        width:100%;
-        height:500px;
-        border-radius:18px;
-        padding:20px;
-        background:linear-gradient(135deg,#dbeafe,#eff6ff);
-        position:relative;
-        border:2px solid #94a3b8;
-        overflow:hidden;
-    ">
 
-        <div style="
-            position:absolute;
-            right:0;
-            top:0;
-            width:35%;
-            height:100%;
-            background:#60a5fa;
-            opacity:0.75;
-        ">
-            <div style="
-                text-align:center;
-                margin-top:220px;
-                color:white;
-                font-size:22px;
-                font-weight:bold;
-            ">
-                RIVER
-            </div>
-        </div>
+// ===============================
+// EXIT
+// ===============================
 
-        <div style="
-            position:absolute;
-            left:8%;
-            top:15%;
-            width:48%;
-            height:25%;
-            background:#86efac;
-            border:3px solid #15803d;
-            border-radius:15px;
-            text-align:center;
-            padding-top:45px;
-            font-size:22px;
-            font-weight:bold;
-        ">
-            🟢 ZONE A<br>
-            <span style="font-size:16px;">13 People — SAFE</span>
-        </div>
+L.marker([23.1845, 75.7644])
+    .addTo(map)
+    .bindPopup(
+        "<b>🚪 Normal Exit</b><br>" +
+        "Proposed / Prototype Location"
+    );
 
-        <div style="
-            position:absolute;
-            left:8%;
-            top:45%;
-            width:48%;
-            height:25%;
-            background:#fde68a;
-            border:3px solid #ca8a04;
-            border-radius:15px;
-            text-align:center;
-            padding-top:45px;
-            font-size:22px;
-            font-weight:bold;
-        ">
-            🟡 ZONE B<br>
-            <span style="font-size:16px;">26 People — MONITOR</span>
-        </div>
 
-        <div style="
-            position:absolute;
-            left:8%;
-            top:75%;
-            width:48%;
-            height:18%;
-            background:#fecaca;
-            border:3px solid #dc2626;
-            border-radius:15px;
-            text-align:center;
-            padding-top:28px;
-            font-size:22px;
-            font-weight:bold;
-        ">
-            🔴 ZONE C — 14 People
-        </div>
+// ===============================
+// EMERGENCY EXIT
+// ===============================
 
-        <div style="
-            position:absolute;
-            left:2%;
-            top:5%;
-            background:#1d4ed8;
-            color:white;
-            padding:10px 16px;
-            border-radius:20px;
-            font-weight:bold;
-        ">
-            🚪 ENTRY GATE
-        </div>
+L.marker([23.1843, 75.7637])
+    .addTo(map)
+    .bindPopup(
+        "<b>🚨 Emergency Exit</b><br>" +
+        "Proposed / Prototype Location"
+    );
 
-        <div style="
-            position:absolute;
-            left:58%;
-            top:8%;
-            background:#15803d;
-            color:white;
-            padding:10px 16px;
-            border-radius:20px;
-            font-weight:bold;
-        ">
-            🚪 EXIT GATE
-        </div>
 
-        <div style="
-            position:absolute;
-            left:58%;
-            top:45%;
-            background:#f97316;
-            color:white;
-            padding:12px 18px;
-            border-radius:20px;
-            font-weight:bold;
-        ">
-            ➡️ DIVERSION ROUTE
-        </div>
+// ===============================
+// MEDICAL POINT
+// ===============================
 
-        <div style="
-            position:absolute;
-            left:58%;
-            top:70%;
-            background:#7c3aed;
-            color:white;
-            padding:12px 18px;
-            border-radius:20px;
-            font-weight:bold;
-        ">
-            🚨 EMERGENCY ROUTE
-        </div>
+L.marker([23.1851, 75.7629])
+    .addTo(map)
+    .bindPopup(
+        "<b>🏥 Medical Point</b><br>" +
+        "Proposed / Prototype Location"
+    );
 
-    </div>
-    """
 
-    st.components.v1.html(
-        map_html,
-        height=540
-    )
+// ===============================
+// CONTROL POINT
+// ===============================
 
-    st.divider()
+L.marker([23.1858, 75.7638])
+    .addTo(map)
+    .bindPopup(
+        "<b>🛡️ Control / Security Point</b><br>" +
+        "Proposed / Prototype Location"
+    );
+
+
+// ===============================
+// DEMO USER LOCATION
+// ===============================
+
+L.circleMarker(
+    [23.1858, 75.7626],
+    {
+        radius: 8,
+        color: "blue",
+        fillColor: "blue",
+        fillOpacity: 1
+    }
+)
+.addTo(map)
+.bindPopup(
+    "<b>📍 User Location</b><br>" +
+    "Demo Location"
+);
+
+
+// ===============================
+// PROPOSED SAFE DIVERSION ROUTE
+// ===============================
+
+var safeRoute = [
+    [23.1861, 75.7624],
+    [23.1858, 75.7626],
+    [23.1855, 75.7630],
+    [23.1851, 75.7635],
+    [23.1845, 75.7644]
+];
+
+L.polyline(
+    safeRoute,
+    {
+        color: "blue",
+        weight: 6,
+        opacity: 0.8,
+        dashArray: "10,8"
+    }
+)
+.addTo(map)
+.bindPopup(
+    "<b>➡️ Safe Diversion Route</b><br>" +
+    "Proposed / Prototype Route"
+);
+
+
+// ===============================
+// LEGEND
+// ===============================
+
+var legend = L.control({position: 'bottomright'});
+
+legend.onAdd = function(map) {
+
+    var div = L.DomUtil.create(
+        'div',
+        'legend'
+    );
+
+    div.innerHTML =
+        "<b>Legend</b><br>" +
+        "🟢 Safe Zone<br>" +
+        "🟡 Monitoring Zone<br>" +
+        "🔴 High Risk Zone<br>" +
+        "🚪 Entry / Exit<br>" +
+        "🚨 Emergency Exit<br>" +
+        "🏥 Medical Point<br>" +
+        "➡️ Safe Diversion";
+
+    return div;
+};
+
+legend.addTo(map);
+
+</script>
+
+</body>
+</html>
+"""
+
+st.components.v1.html(
+    map_html,
+    height=540
+)
+
+st.divider()
 
     # -----------------------------------------------------
     # DIVERSION RECOMMENDATION
     # -----------------------------------------------------
 
-    st.markdown("### 🚦 AI Diversion Recommendation")
+st.markdown("### 🚦 AI Diversion Recommendation")
 
-    d1, d2 = st.columns(2)
+d1, d2 = st.columns(2)
 
-    with d1:
+with d1:
 
         st.success(
             "🟢 ENTRY: Normal entry is allowed through the main gate."
@@ -1468,7 +1701,7 @@ with tab4:
             "🟡 ZONE B: Crowd monitoring recommended due to increasing density."
         )
 
-    with d2:
+with d2:
 
         st.info(
             "➡️ DIVERSION: Visitors can be redirected through the alternate route."
@@ -1478,9 +1711,9 @@ with tab4:
             "🚨 EMERGENCY: Emergency route should remain clear."
         )
 
-    st.markdown("### 📍 Zone-wise GIS Status")
+        st.markdown("### 📍 Zone-wise GIS Status")
 
-    gis_data = pd.DataFrame({
+        gis_data = pd.DataFrame({
         "Zone": ["Zone A", "Zone B", "Zone C"],
         "Crowd": [13, 26, 14],
         "Status": ["SAFE", "MONITOR", "SAFE"],
@@ -1491,7 +1724,7 @@ with tab4:
         ]
     })
 
-    st.dataframe(
+        st.dataframe(
         gis_data,
         width="stretch",
         hide_index=True
@@ -2406,33 +2639,47 @@ if st.query_params.get("ai") == "open":
 
         q = user_question.lower()
 
-        # Current dashboard demo values
-        current_crowd = 53
-        zone_a = 13
-        zone_b = 26
-        zone_c = 14
+        # Use actual latest YOLO/video analysis instead of fixed demo values.
+        live_zones = st.session_state.latest_zone_counts
+        current_crowd = st.session_state.latest_total_people
+        current_alerts = st.session_state.latest_crowd_alerts
 
-        # Simple local AI response system
-        if "crowd" in q and ("kitni" in q or "how many" in q or "current" in q):
-            answer = (
-                f"👥 Current dashboard data ke according total crowd "
-                f"{current_crowd} people hai."
-            )
+        # Assistant summarizes the latest analyzed dashboard state.
+        if any(word in q for word in ["alert", "warning", "risk", "khatra", "emergency"]):
+            if current_alerts:
+                alert_lines = [
+                    f"• {a.get('severity', 'ALERT')} — {a.get('type', 'Crowd alert')} in {a.get('zone', 'zone')}: "
+                    f"{a.get('occupancy', 'N/A')}% occupancy. {a.get('message', '')}"
+                    for a in current_alerts
+                ]
+                answer = "🚨 Latest AI crowd analysis:\n\n" + "\n\n".join(alert_lines)
+            else:
+                answer = (
+                    "✅ Latest video analysis me koi high/critical crowd alert nahi mila. "
+                    "Fire/smoke aur medical emergency ko current person-detection model "
+                    "automatically confirm nahi kar sakta; inke liye dedicated trained detector chahiye."
+                )
+
+        elif "crowd" in q and ("kitni" in q or "how many" in q or "current" in q or "total" in q):
+            if current_crowd is None:
+                answer = "Abhi video analysis start nahi hua hai. Pehle Start Live Crowd Processing dabayein."
+            else:
+                answer = (
+                    f"👥 Latest YOLO video analysis ke according total {current_crowd} people detected hain. "
+                    f"Overall status: {st.session_state.latest_overall_status}."
+                )
 
         elif "zone a" in q:
-            answer = f"🟢 Zone A me currently {zone_a} people detected hain."
+            answer = (f"🟢 Zone A me latest analysis ke according {live_zones.get('Zone A', live_zones.get('A', 'N/A'))} people detected hain."
+                      if live_zones else "Abhi zone analysis available nahi hai. Pehle video processing start karein.")
 
         elif "zone b" in q:
-            answer = f"🟡 Zone B me currently {zone_b} people detected hain. Monitoring recommended hai."
+            answer = (f"🟡 Zone B me latest analysis ke according {live_zones.get('Zone B', live_zones.get('B', 'N/A'))} people detected hain."
+                      if live_zones else "Abhi zone analysis available nahi hai. Pehle video processing start karein.")
 
         elif "zone c" in q:
-            answer = f"🔴 Zone C me currently {zone_c} people detected hain."
-
-        elif "emergency" in q:
-            answer = (
-                "🚨 Emergency situation me nearest safe exit ki taraf move karein "
-                "aur ghat authority/security personnel ke instructions follow karein."
-            )
+            answer = (f"🔴 Zone C me latest analysis ke according {live_zones.get('Zone C', live_zones.get('C', 'N/A'))} people detected hain."
+                      if live_zones else "Abhi zone analysis available nahi hai. Pehle video processing start karein.")
 
         elif "gate" in q:
             answer = (

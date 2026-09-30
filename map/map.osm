@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<osm version="0.6" generator="openstreetmap-cgimap 2.1.0 (2942767 spike-08.openstreetmap.org)" copyright="OpenStreetMap and contributors" attribution="http://www.openstreetmap.org/copyright" license="http://opendatacommons.org/licenses/odbl/1-0/">
+ <bounds minlat="25.1775882" minlon="80.8703338" maxlat="25.1776896" maxlon="80.8704861"/>
+ <node id="5342394920" visible="true" version="1" changeset="55485896" timestamp="2018-01-16T08:23:16Z" user="PlaneMad" uid="1306" lat="25.1776410" lon="80.8704069">
+  <tag k="name" v="Ramghat"/>
+  <tag k="place" v="suburb"/>
+ </node>
+ <node id="8525077112" visible="true" version="1" changeset="101133395" timestamp="2021-03-16T16:35:06Z" user="erenozdemir" uid="9206516" lat="25.1777432" lon="80.8703566"/>
+ <node id="8525077113" visible="true" version="1" changeset="101133395" timestamp="2021-03-16T16:35:06Z" user="erenozdemir" uid="9206516" lat="25.1776709" lon="80.8703526"/>
+ <node id="8525081226" visible="true" version="1" changeset="101133395" timestamp="2021-03-16T16:35:06Z" user="erenozdemir" uid="9206516" lat="25.1777460" lon="80.8702934"/>
+ <node id="8525081227" visible="true" version="1" changeset="101133395" timestamp="2021-03-16T16:35:06Z" user="erenozdemir" uid="9206516" lat="25.1776738" lon="80.8702894"/>
+ <node id="8526295240" visible="true" version="1" changeset="101145864" timestamp="2021-03-16T21:48:59Z" user="erenozdemir" uid="9206516" lat="25.1778014" lon="80.8704873"/>
+ <node id="8526295241" visible="true" version="1" changeset="101145864" timestamp="2021-03-16T21:48:59Z" user="erenozdemir" uid="9206516" lat="25.1776879" lon="80.8704719"/>
+ <node id="8526295242" visible="true" version="1" changeset="101145864" timestamp="2021-03-16T21:48:59Z" user="erenozdemir" uid="9206516" lat="25.1776987" lon="80.8703754"/>
+ <node id="8526295243" visible="true" version="1" changeset="101145864" timestamp="2021-03-16T21:48:59Z" user="erenozdemir" uid="9206516" lat="25.1778122" lon="80.8703908"/>
+ <way id="917882591" visible="true" version="1" changeset="101133395" timestamp="2021-03-16T16:35:06Z" user="erenozdemir" uid="9206516">
+  <nd ref="8525081226"/>
+  <nd ref="8525077112"/>
+  <nd ref="8525077113"/>
+  <nd ref="8525081227"/>
+  <nd ref="8525081226"/>
+  <tag k="building" v="yes"/>
+ </way>
+ <way id="918028664" visible="true" version="1" changeset="101145864" timestamp="2021-03-16T21:48:59Z" user="erenozdemir" uid="9206516">
+  <nd ref="8526295243"/>
+  <nd ref="8526295240"/>
+  <nd ref="8526295241"/>
+  <nd ref="8526295242"/>
+  <nd ref="8526295243"/>
+  <tag k="building" v="yes"/>
+ </way>
+</osm>
