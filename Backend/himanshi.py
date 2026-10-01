@@ -1,4 +1,4 @@
-﻿"""
+"""
 GhatNetra AI (à¤˜à¤¾à¤Ÿ-à¤¨à¥‡à¤¤à¥à¤°)
 MPSTDC AI Ghat Crowd Management & Decision Support System
 Smart India Hackathon 2026
@@ -1942,6 +1942,7 @@ with tab1:
 # TREND & 60-MIN PREDICTION
 # =========================================================
 
+
 # =========================================================
 # TAB 4
 # GHAT GIS MAP & DIVERSIONS
@@ -1978,345 +1979,157 @@ with tab4:
     st.divider()
 
     # -----------------------------------------------------
-    # RAM GHAT GIS MAP
+    # GHAT MAP
     # -----------------------------------------------------
 
-    st.markdown("### 🗺️ Ram Ghat GIS Crowd & Diversion Map")
+    st.markdown("### 🗺️ Ghat Crowd & Diversion Map")
 
     map_html = """
-    <!DOCTYPE html>
-    <html>
-
-    <head>
-
-        <link
-            rel="stylesheet"
-            href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
-        />
-
-        <script
-            src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js">
-        </script>
-
-        <style>
-
-            html,
-            body {
-                margin: 0;
-                padding: 0;
-                width: 100%;
-                height: 100%;
-            }
-
-            #ramghat-map {
-                width: 100%;
-                height: 560px;
-                border-radius: 18px;
-                overflow: hidden;
-                border: 2px solid #94a3b8;
-            }
-
-            .legend {
-                background: white;
-                padding: 12px;
-                border-radius: 10px;
-                box-shadow: 0 2px 8px rgba(0,0,0,0.25);
-                font-family: Arial;
-                font-size: 13px;
-                line-height: 22px;
-            }
-
-            .legend-title {
-                font-weight: bold;
-                margin-bottom: 5px;
-                font-size: 15px;
-            }
-
-        </style>
-
-    </head>
-
-    <body>
-
-        <div id="ramghat-map"></div>
-
-        <script>
-
-            // -------------------------------------------------
-            // RAM GHAT, UJJAIN
-            // -------------------------------------------------
-
-            var ramGhat = [23.1854, 75.7633];
-
-            var map = L.map('ramghat-map').setView(
-                ramGhat,
-                17
-            );
-
-
-            // -------------------------------------------------
-            // OPEN STREET MAP BASE MAP
-            // -------------------------------------------------
-
-            L.tileLayer(
-                'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
-                {
-                    maxZoom: 21,
-                    attribution:
-                    '&copy; OpenStreetMap contributors'
-                }
-            ).addTo(map);
-
-
-            // -------------------------------------------------
-            // RAM GHAT MARKER
-            // -------------------------------------------------
-
-            L.marker(ramGhat)
-                .addTo(map)
-                .bindPopup(
-                    '<b>📍 Shri Ram Ghat</b><br>' +
-                    'Ujjain, Madhya Pradesh'
-                )
-                .openPopup();
-
-
-            // -------------------------------------------------
-            // ZONE A
-            // -------------------------------------------------
-
-            var zoneA = L.circle(
-                [23.1859, 75.7628],
-                {
-                    radius: 80,
-                    color: '#15803d',
-                    fillColor: '#22c55e',
-                    fillOpacity: 0.35
-                }
-            ).addTo(map);
-
-            zoneA.bindPopup(
-                '<b>🟢 Zone A</b><br>' +
-                'SAFE<br>' +
-                '13 People<br>' +
-                'Prototype crowd zone'
-            );
-
-
-            // -------------------------------------------------
-            // ZONE B
-            // -------------------------------------------------
-
-            var zoneB = L.circle(
-                [23.1853, 75.7635],
-                {
-                    radius: 80,
-                    color: '#ca8a04',
-                    fillColor: '#facc15',
-                    fillOpacity: 0.35
-                }
-            ).addTo(map);
-
-            zoneB.bindPopup(
-                '<b>🟡 Zone B</b><br>' +
-                'MONITOR<br>' +
-                '26 People<br>' +
-                'Prototype crowd zone'
-            );
-
-
-            // -------------------------------------------------
-            // ZONE C
-            // -------------------------------------------------
-
-            var zoneC = L.circle(
-                [23.1847, 75.7641],
-                {
-                    radius: 80,
-                    color: '#dc2626',
-                    fillColor: '#ef4444',
-                    fillOpacity: 0.35
-                }
-            ).addTo(map);
-
-            zoneC.bindPopup(
-                '<b>🔴 Zone C</b><br>' +
-                'HIGH CROWD<br>' +
-                '14 People<br>' +
-                'Prototype crowd zone'
-            );
-
-
-            // -------------------------------------------------
-            // CONTROL POINT
-            // -------------------------------------------------
-
-            L.marker(
-                [23.1858, 75.7638]
-            )
-            .addTo(map)
-            .bindPopup(
-                '<b>🛡️ Control Point</b><br>' +
-                'Proposed / Prototype'
-            );
-
-
-            // -------------------------------------------------
-            // MEDICAL POINT
-            // -------------------------------------------------
-
-            L.marker(
-                [23.1851, 75.7629]
-            )
-            .addTo(map)
-            .bindPopup(
-                '<b>🏥 Medical Point</b><br>' +
-                'Proposed / Prototype'
-            );
-
-
-            // -------------------------------------------------
-            // ENTRY POINT
-            // -------------------------------------------------
-
-            L.marker(
-                [23.1861, 75.7624]
-            )
-            .addTo(map)
-            .bindPopup(
-                '<b>🚪 Entry Gate</b><br>' +
-                'Proposed / Prototype'
-            );
-
-
-            // -------------------------------------------------
-            // NORMAL EXIT
-            // -------------------------------------------------
-
-            L.marker(
-                [23.1845, 75.7644]
-            )
-            .addTo(map)
-            .bindPopup(
-                '<b>🚪 Normal Exit</b><br>' +
-                'Proposed / Prototype'
-            );
-
-
-            // -------------------------------------------------
-            // EMERGENCY EXIT
-            // -------------------------------------------------
-
-            L.marker(
-                [23.1843, 75.7637]
-            )
-            .addTo(map)
-            .bindPopup(
-                '<b>🚨 Emergency Exit</b><br>' +
-                'Proposed / Prototype'
-            );
-
-
-            // -------------------------------------------------
-            // USER LOCATION - DEMO
-            // -------------------------------------------------
-
-            var userMarker = L.circleMarker(
-                [23.1858, 75.7626],
-                {
-                    radius: 8,
-                    color: '#1d4ed8',
-                    fillColor: '#3b82f6',
-                    fillOpacity: 1
-                }
-            ).addTo(map);
-
-            userMarker.bindPopup(
-                '<b>📍 User Location</b><br>' +
-                'Demo location'
-            );
-
-
-            // -------------------------------------------------
-            // SAFE DIVERSION ROUTE
-            // -------------------------------------------------
-
-            var safeRoute = L.polyline(
-                [
-                    [23.1861, 75.7624],
-                    [23.1858, 75.7628],
-                    [23.1855, 75.7630],
-                    [23.1850, 75.7634],
-                    [23.1845, 75.7644]
-                ],
-                {
-                    color: '#2563eb',
-                    weight: 6,
-                    opacity: 0.85,
-                    dashArray: '10,8'
-                }
-            ).addTo(map);
-
-            safeRoute.bindPopup(
-                '<b>➡️ Safe Diversion Route</b><br>' +
-                'Prototype route'
-            );
-
-
-            // -------------------------------------------------
-            // LEGEND
-            // -------------------------------------------------
-
-            var legend = L.control({
-                position: 'bottomright'
-            });
-
-            legend.onAdd = function() {
-
-                var div = L.DomUtil.create(
-                    'div',
-                    'legend'
-                );
-
-                div.innerHTML =
-                    '<div class="legend-title">' +
-                    'Crowd Vision AI' +
-                    '</div>' +
-
-                    '🟢 Safe Zone<br>' +
-                    '🟡 Monitoring Zone<br>' +
-                    '🔴 High Crowd Zone<br>' +
-                    '📍 User Location<br>' +
-                    '🚪 Entry / Exit<br>' +
-                    '🚨 Emergency Exit<br>' +
-                    '🏥 Medical Point<br>' +
-                    '🛡️ Control Point<br>' +
-                    '➡️ Safe Diversion';
-
-                return div;
-            };
-
-            legend.addTo(map);
-
-        </script>
-
-    </body>
-    </html>
+    <div style="
+        width:100%;
+        height:500px;
+        border-radius:18px;
+        padding:20px;
+        background:linear-gradient(135deg,#dbeafe,#eff6ff);
+        position:relative;
+        border:2px solid #94a3b8;
+        overflow:hidden;
+    ">
+
+        <div style="
+            position:absolute;
+            right:0;
+            top:0;
+            width:35%;
+            height:100%;
+            background:#60a5fa;
+            opacity:0.75;
+        ">
+            <div style="
+                text-align:center;
+                margin-top:220px;
+                color:white;
+                font-size:22px;
+                font-weight:bold;
+            ">
+                RIVER
+            </div>
+        </div>
+
+        <div style="
+            position:absolute;
+            left:8%;
+            top:15%;
+            width:48%;
+            height:25%;
+            background:#86efac;
+            border:3px solid #15803d;
+            border-radius:15px;
+            text-align:center;
+            padding-top:45px;
+            font-size:22px;
+            font-weight:bold;
+        ">
+            🟢 ZONE A<br>
+            <span style="font-size:16px;">13 People — SAFE</span>
+        </div>
+
+        <div style="
+            position:absolute;
+            left:8%;
+            top:45%;
+            width:48%;
+            height:25%;
+            background:#fde68a;
+            border:3px solid #ca8a04;
+            border-radius:15px;
+            text-align:center;
+            padding-top:45px;
+            font-size:22px;
+            font-weight:bold;
+        ">
+            🟡 ZONE B<br>
+            <span style="font-size:16px;">26 People — MONITOR</span>
+        </div>
+
+        <div style="
+            position:absolute;
+            left:8%;
+            top:75%;
+            width:48%;
+            height:18%;
+            background:#fecaca;
+            border:3px solid #dc2626;
+            border-radius:15px;
+            text-align:center;
+            padding-top:28px;
+            font-size:22px;
+            font-weight:bold;
+        ">
+            🔴 ZONE C — 14 People
+        </div>
+
+        <div style="
+            position:absolute;
+            left:2%;
+            top:5%;
+            background:#1d4ed8;
+            color:white;
+            padding:10px 16px;
+            border-radius:20px;
+            font-weight:bold;
+        ">
+            🚪 ENTRY GATE
+        </div>
+
+        <div style="
+            position:absolute;
+            left:58%;
+            top:8%;
+            background:#15803d;
+            color:white;
+            padding:10px 16px;
+            border-radius:20px;
+            font-weight:bold;
+        ">
+            🚪 EXIT GATE
+        </div>
+
+        <div style="
+            position:absolute;
+            left:58%;
+            top:45%;
+            background:#f97316;
+            color:white;
+            padding:12px 18px;
+            border-radius:20px;
+            font-weight:bold;
+        ">
+            ➡️ DIVERSION ROUTE
+        </div>
+
+        <div style="
+            position:absolute;
+            left:58%;
+            top:70%;
+            background:#7c3aed;
+            color:white;
+            padding:12px 18px;
+            border-radius:20px;
+            font-weight:bold;
+        ">
+            🚨 EMERGENCY ROUTE
+        </div>
+
+    </div>
     """
 
     st.components.v1.html(
         map_html,
-        height=590
-    )
-
-    st.caption(
-        "Base map: OpenStreetMap. "
-        "Safety points and diversion route are shown as "
-        "prototype/demo locations."
+        height=540
     )
 
     st.divider()
-
 
     # -----------------------------------------------------
     # DIVERSION RECOMMENDATION
@@ -2346,32 +2159,12 @@ with tab4:
             "🚨 EMERGENCY: Emergency route should remain clear."
         )
 
-
-    # -----------------------------------------------------
-    # ZONE-WISE GIS STATUS
-    # -----------------------------------------------------
-
     st.markdown("### 📍 Zone-wise GIS Status")
 
     gis_data = pd.DataFrame({
-        "Zone": [
-            "Zone A",
-            "Zone B",
-            "Zone C"
-        ],
-
-        "Crowd": [
-            13,
-            26,
-            14
-        ],
-
-        "Status": [
-            "SAFE",
-            "MONITOR",
-            "SAFE"
-        ],
-
+        "Zone": ["Zone A", "Zone B", "Zone C"],
+        "Crowd": [13, 26, 14],
+        "Status": ["SAFE", "MONITOR", "SAFE"],
         "Recommended Action": [
             "Normal Movement",
             "Monitor Crowd",
@@ -2385,11 +2178,11 @@ with tab4:
         hide_index=True
     )
 
-
 # =========================================================
 # TAB 5
 # AI LOST PERSON SEARCH
 # =========================================================
+
 with tab5:
 
     st.subheader("🔍 AI Lost Person Search")

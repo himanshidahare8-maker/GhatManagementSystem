@@ -1,4 +1,4 @@
-﻿"""
+"""
 GhatNetra AI (à¤˜à¤¾à¤Ÿ-à¤¨à¥‡à¤¤à¥à¤°)
 MPSTDC AI Ghat Crowd Management & Decision Support System
 Smart India Hackathon 2026
@@ -13,20 +13,6 @@ from pathlib import Path
 from datetime import datetime, timedelta
 from ultralytics import YOLO
 import base64
-import tempfile
-import gc
-import os
-
-# =========================================================
-# PAGE CONFIGURATION
-# Must be the first Streamlit command after imports.
-# =========================================================
-st.set_page_config(
-    page_title="CROWDVISION AI - MPSTDC SIH 2026",
-    page_icon="👁️",
-    layout="wide",
-    initial_sidebar_state="expanded"
-)
 
 from decision_engine import (
     evaluate_zone_status,
@@ -43,6 +29,16 @@ if "ai_messages" not in st.session_state:
         }
     ]
 
+# =========================================================
+# PAGE CONFIGURATION
+# =========================================================
+
+st.set_page_config(
+    page_title="CROWDVISION AI - MPSTDC SIH 2026",
+    page_icon="",
+    layout="wide",
+    initial_sidebar_state="expanded"
+)
 # =========================================================
 # 🤖 FLOATING AI ASSISTANT UI
 # =========================================================
@@ -153,526 +149,6 @@ def find_video():
 
 
 VIDEO_PATH = find_video()
-
-
-# =========================================================
-# 🎥 MULTI-CAMERA CROWD COUNTING — OFFLINE
-# =========================================================
-# Upload two camera-angle videos, detect people locally with YOLO,
-# save annotated videos, and estimate a combined crowd count.
-# No internet/API/map tiles are required here.
-# =========================================================
-
-MULTI_OUTPUT_DIR = PROJECT_ROOT / "multi_camera_processed"
-MULTI_OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
-
-
-def _find_ffmpeg_executable():
-    """Find a local FFmpeg executable without requiring internet access."""
-    import shutil
-
-    ffmpeg_path = shutil.which("ffmpeg")
-    if ffmpeg_path:
-        return ffmpeg_path
-
-    # Optional fallback when imageio-ffmpeg is already installed locally.
-    try:
-        import imageio_ffmpeg
-        return imageio_ffmpeg.get_ffmpeg_exe()
-    except Exception:
-        return None
-
-
-def _convert_to_browser_mp4(raw_path, output_path):
-    """Convert OpenCV mp4v output to browser-friendly H.264 MP4."""
-    import subprocess
-
-    ffmpeg_exe = _find_ffmpeg_executable()
-    if not ffmpeg_exe:
-        return False, (
-            "FFmpeg nahi mila. Browser-compatible H.264 MP4 banane ke liye "
-            "local FFmpeg ya imageio-ffmpeg install hona chahiye."
-        )
-
-    command = [
-        ffmpeg_exe,
-        "-y",
-        "-i", str(raw_path),
-        "-c:v", "libx264",
-        "-preset", "fast",
-        "-crf", "23",
-        "-pix_fmt", "yuv420p",
-        "-movflags", "+faststart",
-        "-an",
-        str(output_path),
-    ]
-
-    try:
-        result = subprocess.run(
-            command,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            text=True,
-            check=False,
-        )
-
-        if result.returncode != 0 or not Path(output_path).exists():
-            error_text = result.stderr[-1200:] if result.stderr else "Unknown FFmpeg error."
-            return False, error_text
-
-        return True, ""
-    except Exception as exc:
-        return False, str(exc)
-
-
-def _safe_remove_file(path, retries=5):
-    """Remove a temporary file safely on Windows/OneDrive.
-
-    OpenCV/Windows can keep a short-lived file lock after VideoCapture.release().
-    Cleanup failure must never stop the completed crowd-processing pipeline.
-    """
-    path = Path(path)
-    if not path.exists():
-        return True
-
-    gc.collect()
-    for attempt in range(retries):
-        try:
-            path.unlink()
-            return True
-        except PermissionError:
-            if attempt < retries - 1:
-                time.sleep(0.35)
-            else:
-                return False
-        except OSError:
-            return False
-    return False
-
-
-def _multi_upload_signature(videos):
-    return tuple((v.name, getattr(v, "size", 0)) for v in videos)
-
-
-def _appearance_signature(crop):
-    """Local appearance descriptor used only for conservative cross-camera deduplication."""
-    if crop is None or crop.size == 0:
-        return None
-
-    crop = cv2.resize(crop, (128, 256))
-    hsv = cv2.cvtColor(crop, cv2.COLOR_BGR2HSV)
-
-    hist = cv2.calcHist(
-        [hsv], [0, 1], None, [24, 16], [0, 180, 0, 256]
-    )
-    cv2.normalize(hist, hist)
-
-    gray = cv2.cvtColor(crop, cv2.COLOR_BGR2GRAY)
-    orb = cv2.ORB_create(nfeatures=500)
-    _, descriptors = orb.detectAndCompute(gray, None)
-
-    return hist, descriptors
-
-
-def _appearance_similarity(sig1, sig2):
-    if sig1 is None or sig2 is None:
-        return 0.0, 0.0
-
-    hist1, des1 = sig1
-    hist2, des2 = sig2
-
-    hist_score = float(
-        cv2.compareHist(hist1, hist2, cv2.HISTCMP_CORREL)
-    )
-
-    orb_score = 0.0
-
-    if des1 is not None and des2 is not None and len(des1) >= 2 and len(des2) >= 2:
-        matcher = cv2.BFMatcher(cv2.NORM_HAMMING, crossCheck=False)
-        try:
-            matches = matcher.knnMatch(des1, des2, k=2)
-            good = []
-            for pair in matches:
-                if len(pair) < 2:
-                    continue
-                m, n = pair
-                if m.distance < 0.75 * n.distance:
-                    good.append(m)
-            orb_score = len(good) / max(1, min(len(des1), len(des2)))
-        except cv2.error:
-            orb_score = 0.0
-
-    return hist_score, orb_score
-
-
-def _looks_like_same_person(sig1, sig2):
-    """Conservative match rule; it reduces duplicates but is not identity verification."""
-    hist_score, orb_score = _appearance_similarity(sig1, sig2)
-
-    # Require strong visual similarity. If ORB features are unavailable,
-    # require an even stronger colour-histogram match.
-    if sig1 is None or sig2 is None:
-        return False
-
-    _, des1 = sig1
-    _, des2 = sig2
-
-    if des1 is not None and des2 is not None and len(des1) >= 2 and len(des2) >= 2:
-        return hist_score >= 0.78 and orb_score >= 0.10
-
-    return hist_score >= 0.93
-
-
-def _match_cross_camera_tracks(camera_tracks):
-    """One-to-one greedy matching between camera track appearances."""
-    if len(camera_tracks) < 2:
-        return 0, []
-
-    left = camera_tracks[0]
-    right = camera_tracks[1]
-    candidates = []
-
-    for left_id, left_data in left.items():
-        for right_id, right_data in right.items():
-            hist_score, orb_score = _appearance_similarity(
-                left_data.get("signature"),
-                right_data.get("signature")
-            )
-            if _looks_like_same_person(
-                left_data.get("signature"),
-                right_data.get("signature")
-            ):
-                combined = hist_score + min(1.0, orb_score) * 0.5
-                candidates.append((combined, left_id, right_id, hist_score, orb_score))
-
-    candidates.sort(reverse=True)
-    used_left = set()
-    used_right = set()
-    matches = []
-
-    for score, left_id, right_id, hist_score, orb_score in candidates:
-        if left_id in used_left or right_id in used_right:
-            continue
-        used_left.add(left_id)
-        used_right.add(right_id)
-        matches.append((left_id, right_id, hist_score, orb_score))
-
-    return len(matches), matches
-
-
-if "multi_processed_paths" not in st.session_state:
-    st.session_state.multi_processed_paths = []
-if "multi_camera_counts" not in st.session_state:
-    st.session_state.multi_camera_counts = []
-if "multi_unique_count" not in st.session_state:
-    st.session_state.multi_unique_count = 0
-if "multi_duplicate_matches" not in st.session_state:
-    st.session_state.multi_duplicate_matches = 0
-if "multi_upload_signature" not in st.session_state:
-    st.session_state.multi_upload_signature = None
-
-st.markdown("## 🎥 Multi-Camera Crowd Counting")
-st.caption(
-    "Offline YOLO analysis • Best results when both videos show the same area at approximately the same time."
-)
-
-uploaded_videos = st.file_uploader(
-    "Upload videos from different camera angles",
-    type=["mp4", "avi", "mov"],
-    accept_multiple_files=True,
-    key="multi_camera_upload"
-)
-
-if uploaded_videos:
-    current_signature = _multi_upload_signature(uploaded_videos)
-    if st.session_state.multi_upload_signature != current_signature:
-        st.session_state.multi_upload_signature = current_signature
-        st.session_state.multi_processed_paths = []
-        st.session_state.multi_camera_counts = []
-        st.session_state.multi_unique_count = 0
-        st.session_state.multi_duplicate_matches = 0
-
-    st.success(f"{len(uploaded_videos)} video(s) uploaded successfully!")
-    for i, video in enumerate(uploaded_videos, start=1):
-        st.write(f"Camera {i}: `{video.name}`")
-
-    if len(uploaded_videos) != 2:
-        st.warning("For cross-camera duplicate reduction, upload exactly 2 camera videos.")
-
-    if st.button("▶️ Process Videos Offline", type="primary", key="process_multi_camera"):
-        if not MODEL_PATH.exists():
-            st.error(f"YOLO model not found: `{MODEL_PATH}`")
-            st.stop()
-
-        output_paths = []
-        camera_tracks = []
-        camera_counts = []
-
-        progress = st.progress(0)
-        status_box = st.empty()
-
-        for camera_index, video_file in enumerate(uploaded_videos, start=1):
-            status_box.info(f"Processing Camera {camera_index}: {video_file.name}")
-
-            temp_extension = Path(video_file.name).suffix.lower() or ".mp4"
-
-            # Store the uploaded input in the system TEMP folder instead of the
-            # OneDrive project folder. This avoids Windows/OneDrive file-lock
-            # conflicts while OpenCV is reading the video.
-            fd, temp_name = tempfile.mkstemp(
-                prefix=f"crowdvision_camera_{camera_index}_",
-                suffix=temp_extension
-            )
-            os.close(fd)
-            temp_path = Path(temp_name)
-            temp_path.write_bytes(video_file.getvalue())
-
-            cap = cv2.VideoCapture(str(temp_path))
-            if not cap.isOpened():
-                _safe_remove_file(temp_path)
-                st.error(f"Camera {camera_index} video open nahi ho rahi: {video_file.name}")
-                continue
-
-            fps = cap.get(cv2.CAP_PROP_FPS)
-            if fps <= 0:
-                fps = 25.0
-
-            width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
-            height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-            if width <= 0 or height <= 0:
-                cap.release()
-                _safe_remove_file(temp_path)
-                st.error(f"Camera {camera_index}: invalid video dimensions.")
-                continue
-
-            # OpenCV first creates a raw local MP4. It is then converted to
-            # H.264 so Chrome/Edge/Streamlit can play the processed video.
-            raw_output_path = MULTI_OUTPUT_DIR / f"camera_{camera_index}_processed_raw.mp4"
-            output_path = MULTI_OUTPUT_DIR / f"camera_{camera_index}_processed.mp4"
-
-            writer = cv2.VideoWriter(
-                str(raw_output_path),
-                cv2.VideoWriter_fourcc(*"mp4v"),
-                fps,
-                (width, height)
-            )
-
-            if not writer.isOpened():
-                cap.release()
-                _safe_remove_file(temp_path)
-                st.error(f"Camera {camera_index}: processed video writer open nahi hua.")
-                continue
-
-            # Fresh YOLO object per camera keeps ByteTrack state camera-local.
-            camera_model = YOLO(str(MODEL_PATH))
-            tracks = {}
-            frame_count = 0
-            current_ids = set()
-
-            while True:
-                ret, frame = cap.read()
-                if not ret:
-                    break
-
-                frame_count += 1
-                current_ids = set()
-
-                results = camera_model.track(
-                    frame,
-                    persist=True,
-                    classes=[0],
-                    tracker="bytetrack.yaml",
-                    conf=0.15,
-                    imgsz=960,
-                    max_det=500,
-                    verbose=False
-                )
-
-                boxes = results[0].boxes if results else None
-
-                if boxes is not None and len(boxes) > 0:
-                    xyxy = boxes.xyxy.cpu().numpy()
-                    confs = boxes.conf.cpu().numpy()
-                    ids = boxes.id.cpu().numpy().astype(int) if boxes.id is not None else None
-
-                    for box_index, coords in enumerate(xyxy):
-                        x1, y1, x2, y2 = map(int, coords[:4])
-                        confidence = float(confs[box_index])
-
-                        x1 = max(0, min(x1, width - 1))
-                        y1 = max(0, min(y1, height - 1))
-                        x2 = max(0, min(x2, width - 1))
-                        y2 = max(0, min(y2, height - 1))
-
-                        if x2 <= x1 or y2 <= y1:
-                            continue
-
-                        track_id = int(ids[box_index]) if ids is not None else None
-                        if track_id is not None:
-                            current_ids.add(track_id)
-
-                            crop = frame[y1:y2, x1:x2].copy()
-                            quality = (x2 - x1) * (y2 - y1) * confidence
-
-                            old_quality = tracks.get(track_id, {}).get("quality", -1)
-                            if quality > old_quality:
-                                tracks[track_id] = {
-                                    "quality": quality,
-                                    "crop": crop,
-                                    "signature": _appearance_signature(crop)
-                                }
-
-                        label = f"Person {track_id}" if track_id is not None else "Person"
-                        label += f"  {confidence:.2f}"
-
-                        cv2.rectangle(
-                            frame,
-                            (x1, y1),
-                            (x2, y2),
-                            (0, 255, 0),
-                            2
-                        )
-                        cv2.rectangle(
-                            frame,
-                            (x1, max(0, y1 - 25)),
-                            (min(width - 1, x1 + max(100, len(label) * 9)), y1),
-                            (0, 255, 0),
-                            -1
-                        )
-                        cv2.putText(
-                            frame,
-                            label,
-                            (x1 + 4, max(18, y1 - 7)),
-                            cv2.FONT_HERSHEY_SIMPLEX,
-                            0.48,
-                            (0, 0, 0),
-                            1,
-                            cv2.LINE_AA
-                        )
-
-                frame_crowd = len(current_ids) if current_ids else (len(boxes) if boxes is not None else 0)
-                tracked_total = len(tracks)
-
-                # Keep the count visible inside the processed video itself.
-                cv2.rectangle(frame, (10, 10), (470, 86), (0, 0, 0), -1)
-                cv2.putText(
-                    frame,
-                    f"CAMERA {camera_index}  |  Frame Crowd: {frame_crowd}",
-                    (20, 39),
-                    cv2.FONT_HERSHEY_SIMPLEX,
-                    0.60,
-                    (255, 255, 255),
-                    2,
-                    cv2.LINE_AA
-                )
-                cv2.putText(
-                    frame,
-                    f"Tracked People: {tracked_total}",
-                    (20, 68),
-                    cv2.FONT_HERSHEY_SIMPLEX,
-                    0.58,
-                    (0, 255, 255),
-                    2,
-                    cv2.LINE_AA
-                )
-
-                writer.write(frame)
-
-                # Update processing progress across all uploaded cameras.
-                progress.progress(
-                    min(1.0, ((camera_index - 1) + min(1.0, frame_count / max(1, int(cap.get(cv2.CAP_PROP_FRAME_COUNT))))) / max(1, len(uploaded_videos)))
-                )
-
-            cap.release()
-            writer.release()
-            _safe_remove_file(temp_path)
-
-            # Convert the OpenCV-generated mp4v file to H.264/yuv420p.
-            converted, conversion_error = _convert_to_browser_mp4(
-                raw_output_path,
-                output_path
-            )
-
-            if converted:
-                raw_output_path.unlink(missing_ok=True)
-                output_paths.append(output_path)
-            else:
-                # Keep the raw file so the processing result is not lost, but
-                # tell the user why the browser preview may not play.
-                st.warning(
-                    f"Camera {camera_index}: H.264 conversion nahi ho payi. "
-                    "FFmpeg install/check karein. Raw processed video save ki gayi hai."
-                )
-                if conversion_error:
-                    st.caption(f"FFmpeg detail: {conversion_error[-500:]}")
-                output_paths.append(raw_output_path)
-
-            camera_tracks.append(tracks)
-            camera_counts.append(len(tracks))
-
-        duplicate_matches = 0
-        match_details = []
-        if len(camera_tracks) >= 2:
-            duplicate_matches, match_details = _match_cross_camera_tracks(camera_tracks[:2])
-
-        combined_unique = sum(camera_counts) - duplicate_matches
-
-        st.session_state.multi_processed_paths = [str(p) for p in output_paths if p.exists()]
-        st.session_state.multi_camera_counts = camera_counts
-        st.session_state.multi_duplicate_matches = duplicate_matches
-        st.session_state.multi_unique_count = max(0, combined_unique)
-
-        progress.progress(1.0)
-        status_box.success("✅ Multi-camera offline processing completed.")
-
-        if match_details:
-            st.info(
-                f"🔗 Conservative visual matching found {duplicate_matches} possible cross-camera duplicate(s). "
-                "These are appearance matches, not identity confirmation."
-            )
-
-# ---------------------------------------------------------
-# PROCESSED VIDEO RESULTS
-# ---------------------------------------------------------
-
-if st.session_state.multi_processed_paths:
-    st.divider()
-    st.subheader("🎬 Processed Camera Videos")
-
-    video_columns = st.columns(2)
-    for index, path_string in enumerate(st.session_state.multi_processed_paths):
-        path = Path(path_string)
-        with video_columns[index % 2]:
-            st.markdown(f"### Camera {index + 1}")
-            st.video(str(path))
-            if index < len(st.session_state.multi_camera_counts):
-                st.metric(
-                    f"Camera {index + 1} Tracked People",
-                    st.session_state.multi_camera_counts[index]
-                )
-
-    st.subheader("📊 Combined Crowd Result")
-    r1, r2, r3 = st.columns(3)
-    with r1:
-        st.metric(
-            "Camera 1 Crowd",
-            st.session_state.multi_camera_counts[0] if len(st.session_state.multi_camera_counts) > 0 else 0
-        )
-    with r2:
-        st.metric(
-            "Camera 2 Crowd",
-            st.session_state.multi_camera_counts[1] if len(st.session_state.multi_camera_counts) > 1 else 0
-        )
-    with r3:
-        st.metric(
-            "👥 Estimated Unique Crowd",
-            st.session_state.multi_unique_count
-        )
-
-    st.caption(
-        "Note: Cross-camera deduplication is conservative visual similarity matching. "
-        "It can reduce duplicate counts but cannot guarantee perfect identity matching."
-    )
 
 
 # =========================================================
@@ -1942,391 +1418,280 @@ with tab1:
 # TREND & 60-MIN PREDICTION
 # =========================================================
 
-# =========================================================
-# TAB 4
-# GHAT GIS MAP & DIVERSIONS
-# =========================================================
+# -----------------------------------------------------
+# REAL GHAT GIS MAP
+# -----------------------------------------------------
 
-with tab4:
+st.markdown("### 🗺️ Ram Ghat GIS Crowd & Diversion Map")
 
-    st.subheader("🗺️ Ghat GIS Map & Diversions")
+map_html = """
+<!DOCTYPE html>
+<html>
+<head>
 
-    st.caption(
-        "GIS-based crowd zones, entry/exit points and safe diversion routes."
+<link rel="stylesheet"
+href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+<style>
+#ramghatmap {
+    width: 100%;
+    height: 520px;
+    border-radius: 18px;
+    border: 2px solid #94a3b8;
+}
+.legend {
+    background: white;
+    padding: 10px;
+    line-height: 20px;
+    border-radius: 8px;
+    box-shadow: 0 0 8px rgba(0,0,0,0.2);
+}
+</style>
+
+</head>
+
+<body>
+
+<div id="ramghatmap"></div>
+
+<script>
+
+var map = L.map('ramghatmap').setView(
+    [23.1854, 75.7633],
+    17
+);
+
+L.tileLayer(
+    'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+    {
+        maxZoom: 19,
+        attribution: '&copy; OpenStreetMap contributors'
+    }
+).addTo(map);
+
+
+// ===============================
+// RAM GHAT
+// ===============================
+
+L.marker([23.1854, 75.7633])
+    .addTo(map)
+    .bindPopup(
+        "<b>📍 Ram Ghat, Ujjain</b><br>" +
+        "Crowd Vision AI Monitoring Area"
     )
-
-    # -----------------------------------------------------
-    # CURRENT CROWD STATUS
-    # -----------------------------------------------------
-
-    current_crowd = 53
-
-    c1, c2, c3, c4 = st.columns(4)
-
-    with c1:
-        st.metric("👥 Total Crowd", "53")
-
-    with c2:
-        st.metric("🟢 Safe Zone", "Zone A")
-
-    with c3:
-        st.metric("🟡 Monitoring", "Zone B")
-
-    with c4:
-        st.metric("🔴 High Risk", "Zone C")
-
-    st.divider()
-
-    # -----------------------------------------------------
-    # RAM GHAT GIS MAP
-    # -----------------------------------------------------
-
-    st.markdown("### 🗺️ Ram Ghat GIS Crowd & Diversion Map")
-
-    map_html = """
-    <!DOCTYPE html>
-    <html>
-
-    <head>
-
-        <link
-            rel="stylesheet"
-            href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
-        />
-
-        <script
-            src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js">
-        </script>
-
-        <style>
-
-            html,
-            body {
-                margin: 0;
-                padding: 0;
-                width: 100%;
-                height: 100%;
-            }
-
-            #ramghat-map {
-                width: 100%;
-                height: 560px;
-                border-radius: 18px;
-                overflow: hidden;
-                border: 2px solid #94a3b8;
-            }
-
-            .legend {
-                background: white;
-                padding: 12px;
-                border-radius: 10px;
-                box-shadow: 0 2px 8px rgba(0,0,0,0.25);
-                font-family: Arial;
-                font-size: 13px;
-                line-height: 22px;
-            }
-
-            .legend-title {
-                font-weight: bold;
-                margin-bottom: 5px;
-                font-size: 15px;
-            }
-
-        </style>
-
-    </head>
-
-    <body>
-
-        <div id="ramghat-map"></div>
-
-        <script>
-
-            // -------------------------------------------------
-            // RAM GHAT, UJJAIN
-            // -------------------------------------------------
-
-            var ramGhat = [23.1854, 75.7633];
-
-            var map = L.map('ramghat-map').setView(
-                ramGhat,
-                17
-            );
-
-
-            // -------------------------------------------------
-            // OPEN STREET MAP BASE MAP
-            // -------------------------------------------------
-
-            L.tileLayer(
-                'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
-                {
-                    maxZoom: 21,
-                    attribution:
-                    '&copy; OpenStreetMap contributors'
-                }
-            ).addTo(map);
-
-
-            // -------------------------------------------------
-            // RAM GHAT MARKER
-            // -------------------------------------------------
-
-            L.marker(ramGhat)
-                .addTo(map)
-                .bindPopup(
-                    '<b>📍 Shri Ram Ghat</b><br>' +
-                    'Ujjain, Madhya Pradesh'
-                )
-                .openPopup();
-
-
-            // -------------------------------------------------
-            // ZONE A
-            // -------------------------------------------------
-
-            var zoneA = L.circle(
-                [23.1859, 75.7628],
-                {
-                    radius: 80,
-                    color: '#15803d',
-                    fillColor: '#22c55e',
-                    fillOpacity: 0.35
-                }
-            ).addTo(map);
-
-            zoneA.bindPopup(
-                '<b>🟢 Zone A</b><br>' +
-                'SAFE<br>' +
-                '13 People<br>' +
-                'Prototype crowd zone'
-            );
-
-
-            // -------------------------------------------------
-            // ZONE B
-            // -------------------------------------------------
-
-            var zoneB = L.circle(
-                [23.1853, 75.7635],
-                {
-                    radius: 80,
-                    color: '#ca8a04',
-                    fillColor: '#facc15',
-                    fillOpacity: 0.35
-                }
-            ).addTo(map);
-
-            zoneB.bindPopup(
-                '<b>🟡 Zone B</b><br>' +
-                'MONITOR<br>' +
-                '26 People<br>' +
-                'Prototype crowd zone'
-            );
-
-
-            // -------------------------------------------------
-            // ZONE C
-            // -------------------------------------------------
-
-            var zoneC = L.circle(
-                [23.1847, 75.7641],
-                {
-                    radius: 80,
-                    color: '#dc2626',
-                    fillColor: '#ef4444',
-                    fillOpacity: 0.35
-                }
-            ).addTo(map);
-
-            zoneC.bindPopup(
-                '<b>🔴 Zone C</b><br>' +
-                'HIGH CROWD<br>' +
-                '14 People<br>' +
-                'Prototype crowd zone'
-            );
-
-
-            // -------------------------------------------------
-            // CONTROL POINT
-            // -------------------------------------------------
-
-            L.marker(
-                [23.1858, 75.7638]
-            )
-            .addTo(map)
-            .bindPopup(
-                '<b>🛡️ Control Point</b><br>' +
-                'Proposed / Prototype'
-            );
-
-
-            // -------------------------------------------------
-            // MEDICAL POINT
-            // -------------------------------------------------
-
-            L.marker(
-                [23.1851, 75.7629]
-            )
-            .addTo(map)
-            .bindPopup(
-                '<b>🏥 Medical Point</b><br>' +
-                'Proposed / Prototype'
-            );
-
-
-            // -------------------------------------------------
-            // ENTRY POINT
-            // -------------------------------------------------
-
-            L.marker(
-                [23.1861, 75.7624]
-            )
-            .addTo(map)
-            .bindPopup(
-                '<b>🚪 Entry Gate</b><br>' +
-                'Proposed / Prototype'
-            );
-
-
-            // -------------------------------------------------
-            // NORMAL EXIT
-            // -------------------------------------------------
-
-            L.marker(
-                [23.1845, 75.7644]
-            )
-            .addTo(map)
-            .bindPopup(
-                '<b>🚪 Normal Exit</b><br>' +
-                'Proposed / Prototype'
-            );
-
-
-            // -------------------------------------------------
-            // EMERGENCY EXIT
-            // -------------------------------------------------
-
-            L.marker(
-                [23.1843, 75.7637]
-            )
-            .addTo(map)
-            .bindPopup(
-                '<b>🚨 Emergency Exit</b><br>' +
-                'Proposed / Prototype'
-            );
-
-
-            // -------------------------------------------------
-            // USER LOCATION - DEMO
-            // -------------------------------------------------
-
-            var userMarker = L.circleMarker(
-                [23.1858, 75.7626],
-                {
-                    radius: 8,
-                    color: '#1d4ed8',
-                    fillColor: '#3b82f6',
-                    fillOpacity: 1
-                }
-            ).addTo(map);
-
-            userMarker.bindPopup(
-                '<b>📍 User Location</b><br>' +
-                'Demo location'
-            );
-
-
-            // -------------------------------------------------
-            // SAFE DIVERSION ROUTE
-            // -------------------------------------------------
-
-            var safeRoute = L.polyline(
-                [
-                    [23.1861, 75.7624],
-                    [23.1858, 75.7628],
-                    [23.1855, 75.7630],
-                    [23.1850, 75.7634],
-                    [23.1845, 75.7644]
-                ],
-                {
-                    color: '#2563eb',
-                    weight: 6,
-                    opacity: 0.85,
-                    dashArray: '10,8'
-                }
-            ).addTo(map);
-
-            safeRoute.bindPopup(
-                '<b>➡️ Safe Diversion Route</b><br>' +
-                'Prototype route'
-            );
-
-
-            // -------------------------------------------------
-            // LEGEND
-            // -------------------------------------------------
-
-            var legend = L.control({
-                position: 'bottomright'
-            });
-
-            legend.onAdd = function() {
-
-                var div = L.DomUtil.create(
-                    'div',
-                    'legend'
-                );
-
-                div.innerHTML =
-                    '<div class="legend-title">' +
-                    'Crowd Vision AI' +
-                    '</div>' +
-
-                    '🟢 Safe Zone<br>' +
-                    '🟡 Monitoring Zone<br>' +
-                    '🔴 High Crowd Zone<br>' +
-                    '📍 User Location<br>' +
-                    '🚪 Entry / Exit<br>' +
-                    '🚨 Emergency Exit<br>' +
-                    '🏥 Medical Point<br>' +
-                    '🛡️ Control Point<br>' +
-                    '➡️ Safe Diversion';
-
-                return div;
-            };
-
-            legend.addTo(map);
-
-        </script>
-
-    </body>
-    </html>
-    """
-
-    st.components.v1.html(
-        map_html,
-        height=590
-    )
-
-    st.caption(
-        "Base map: OpenStreetMap. "
-        "Safety points and diversion route are shown as "
-        "prototype/demo locations."
-    )
-
-    st.divider()
-
+    .openPopup();
+
+
+// ===============================
+// CROWD ZONES
+// ===============================
+
+L.circle(
+    [23.1859, 75.7628],
+    {
+        radius: 80,
+        color: "green",
+        fillColor: "green",
+        fillOpacity: 0.25
+    }
+)
+.addTo(map)
+.bindPopup(
+    "<b>🟢 Zone A</b><br>Safe / Normal Movement"
+);
+
+
+L.circle(
+    [23.1853, 75.7635],
+    {
+        radius: 80,
+        color: "orange",
+        fillColor: "yellow",
+        fillOpacity: 0.30
+    }
+)
+.addTo(map)
+.bindPopup(
+    "<b>🟡 Zone B</b><br>Monitor Crowd"
+);
+
+
+L.circle(
+    [23.1847, 75.7641],
+    {
+        radius: 80,
+        color: "red",
+        fillColor: "red",
+        fillOpacity: 0.25
+    }
+)
+.addTo(map)
+.bindPopup(
+    "<b>🔴 Zone C</b><br>High Crowd / Monitoring"
+);
+
+
+// ===============================
+// ENTRY
+// ===============================
+
+L.marker([23.1861, 75.7624])
+    .addTo(map)
+    .bindPopup(
+        "<b>🚪 Entry Point</b><br>" +
+        "Proposed / Prototype Location"
+    );
+
+
+// ===============================
+// EXIT
+// ===============================
+
+L.marker([23.1845, 75.7644])
+    .addTo(map)
+    .bindPopup(
+        "<b>🚪 Normal Exit</b><br>" +
+        "Proposed / Prototype Location"
+    );
+
+
+// ===============================
+// EMERGENCY EXIT
+// ===============================
+
+L.marker([23.1843, 75.7637])
+    .addTo(map)
+    .bindPopup(
+        "<b>🚨 Emergency Exit</b><br>" +
+        "Proposed / Prototype Location"
+    );
+
+
+// ===============================
+// MEDICAL POINT
+// ===============================
+
+L.marker([23.1851, 75.7629])
+    .addTo(map)
+    .bindPopup(
+        "<b>🏥 Medical Point</b><br>" +
+        "Proposed / Prototype Location"
+    );
+
+
+// ===============================
+// CONTROL POINT
+// ===============================
+
+L.marker([23.1858, 75.7638])
+    .addTo(map)
+    .bindPopup(
+        "<b>🛡️ Control / Security Point</b><br>" +
+        "Proposed / Prototype Location"
+    );
+
+
+// ===============================
+// DEMO USER LOCATION
+// ===============================
+
+L.circleMarker(
+    [23.1858, 75.7626],
+    {
+        radius: 8,
+        color: "blue",
+        fillColor: "blue",
+        fillOpacity: 1
+    }
+)
+.addTo(map)
+.bindPopup(
+    "<b>📍 User Location</b><br>" +
+    "Demo Location"
+);
+
+
+// ===============================
+// PROPOSED SAFE DIVERSION ROUTE
+// ===============================
+
+var safeRoute = [
+    [23.1861, 75.7624],
+    [23.1858, 75.7626],
+    [23.1855, 75.7630],
+    [23.1851, 75.7635],
+    [23.1845, 75.7644]
+];
+
+L.polyline(
+    safeRoute,
+    {
+        color: "blue",
+        weight: 6,
+        opacity: 0.8,
+        dashArray: "10,8"
+    }
+)
+.addTo(map)
+.bindPopup(
+    "<b>➡️ Safe Diversion Route</b><br>" +
+    "Proposed / Prototype Route"
+);
+
+
+// ===============================
+// LEGEND
+// ===============================
+
+var legend = L.control({position: 'bottomright'});
+
+legend.onAdd = function(map) {
+
+    var div = L.DomUtil.create(
+        'div',
+        'legend'
+    );
+
+    div.innerHTML =
+        "<b>Legend</b><br>" +
+        "🟢 Safe Zone<br>" +
+        "🟡 Monitoring Zone<br>" +
+        "🔴 High Risk Zone<br>" +
+        "🚪 Entry / Exit<br>" +
+        "🚨 Emergency Exit<br>" +
+        "🏥 Medical Point<br>" +
+        "➡️ Safe Diversion";
+
+    return div;
+};
+
+legend.addTo(map);
+
+</script>
+
+</body>
+</html>
+"""
+
+st.components.v1.html(
+    map_html,
+    height=540
+)
+
+st.divider()
 
     # -----------------------------------------------------
     # DIVERSION RECOMMENDATION
     # -----------------------------------------------------
 
-    st.markdown("### 🚦 AI Diversion Recommendation")
+st.markdown("### 🚦 AI Diversion Recommendation")
 
-    d1, d2 = st.columns(2)
+d1, d2 = st.columns(2)
 
-    with d1:
+with d1:
 
         st.success(
             "🟢 ENTRY: Normal entry is allowed through the main gate."
@@ -2336,7 +1701,7 @@ with tab4:
             "🟡 ZONE B: Crowd monitoring recommended due to increasing density."
         )
 
-    with d2:
+with d2:
 
         st.info(
             "➡️ DIVERSION: Visitors can be redirected through the alternate route."
@@ -2346,32 +1711,12 @@ with tab4:
             "🚨 EMERGENCY: Emergency route should remain clear."
         )
 
+        st.markdown("### 📍 Zone-wise GIS Status")
 
-    # -----------------------------------------------------
-    # ZONE-WISE GIS STATUS
-    # -----------------------------------------------------
-
-    st.markdown("### 📍 Zone-wise GIS Status")
-
-    gis_data = pd.DataFrame({
-        "Zone": [
-            "Zone A",
-            "Zone B",
-            "Zone C"
-        ],
-
-        "Crowd": [
-            13,
-            26,
-            14
-        ],
-
-        "Status": [
-            "SAFE",
-            "MONITOR",
-            "SAFE"
-        ],
-
+        gis_data = pd.DataFrame({
+        "Zone": ["Zone A", "Zone B", "Zone C"],
+        "Crowd": [13, 26, 14],
+        "Status": ["SAFE", "MONITOR", "SAFE"],
         "Recommended Action": [
             "Normal Movement",
             "Monitor Crowd",
@@ -2379,17 +1724,17 @@ with tab4:
         ]
     })
 
-    st.dataframe(
+        st.dataframe(
         gis_data,
         width="stretch",
         hide_index=True
     )
 
-
 # =========================================================
 # TAB 5
 # AI LOST PERSON SEARCH
 # =========================================================
+
 with tab5:
 
     st.subheader("🔍 AI Lost Person Search")
