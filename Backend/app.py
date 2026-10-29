@@ -1797,36 +1797,46 @@ with tab1:
                 channels="RGB",
                 use_container_width=True
             )
+# =================================================
+# RIGHT SIDE METRICS
+# =================================================
 
+with m_placeholder.container():
 
-            # =================================================
-            # RIGHT SIDE METRICS
-            # =================================================
+    mc1, mc2 = st.columns(2)
 
-            with m_placeholder.container():
+    with mc1:
+        st.metric(
+            "👥 Total Crowd",
+            total_people
+        )
 
-                mc1, mc2 = st.columns(2)
+    with mc2:
+        st.metric(
+            "📊 Occupancy",
+            f"{overall_occ:.1f}%"
+        )
 
-                with mc1:
+    # Detection Confidence
+    if final_boxes:
+        avg_confidence = np.mean(
+            [score for _, score in final_boxes]
+        ) * 100
 
-                    st.metric(
-                        "👥 Total Crowd",
-                        total_people
-                    )
+        st.metric(
+            "🎯 Detection Confidence",
+            f"{avg_confidence:.2f}%"
+        )
+    else:
+        st.metric(
+            "🎯 Detection Confidence",
+            "N/A"
+        )
 
-                with mc2:
-
-                    st.metric(
-                        "📊 Occupancy",
-                        f"{overall_occ:.1f}%"
-                    )
-
-
-                st.metric(
-                    "🚨 Overall Status",
-                    overall_stat
-                )
-
+    st.metric(
+        "🚨 Overall Status",
+        overall_stat
+    )
 
             # =================================================
             # ZONE DETAILS
@@ -3367,3 +3377,4 @@ if st.query_params.get("ai") == "open":
         })
 
         st.rerun()
+ 
